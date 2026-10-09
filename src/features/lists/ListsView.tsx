@@ -680,6 +680,19 @@ export function ListsView({
     });
   }
 
+  async function handleCheckOutAllGroceries() {
+    const uncheckedItems = activeGroceries.filter((item) => !item.checked);
+    const now = new Date().toISOString();
+    await Promise.all(
+      uncheckedItems.map((item) =>
+        db.groceryItems.update(item.id, {
+          checked: true,
+          updatedAt: now,
+        })
+      )
+    );
+  }
+
   async function handleClearCheckedGroceries() {
     const checkedItems = activeGroceries.filter((g) => g.checked);
     const now = new Date().toISOString();
@@ -916,14 +929,26 @@ export function ListsView({
               })}
 
               <div className="pt-2 flex flex-col gap-2">
-                <button
-                  type="button"
-                  className="h-12 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-secondary text-primary font-bold text-[15px] hover:bg-secondary/80 transition-colors cursor-pointer mt-1"
-                  onClick={() => setAddGroceryOpen(true)}
-                >
-                  <Plus className="size-5" />
-                  Add item
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    className="h-12 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-secondary text-primary font-bold text-[15px] hover:bg-secondary/80 transition-colors cursor-pointer mt-1"
+                    onClick={() => setAddGroceryOpen(true)}
+                  >
+                    <Plus className="size-5" />
+                    Add item
+                  </button>
+
+                  <button
+                    type="button"
+                    className="h-12 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground font-bold text-[15px] hover:bg-primary/90 transition-colors cursor-pointer mt-1 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={handleCheckOutAllGroceries}
+                    disabled={remainingGroceries === 0}
+                  >
+                    <Check className="size-5" />
+                    Check out all items
+                  </button>
+                </div>
 
                 {activeGroceries.some((g) => g.checked) && (
                   <button
