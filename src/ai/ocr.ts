@@ -10,11 +10,17 @@ let ocrPipeline: any = null;
 
 export async function initOCRPipeline(progressCallback?: (p: any) => void) {
   if (!ocrPipeline) {
-    ocrPipeline = await pipeline('image-to-text', 'Xenova/trocr-base-handwritten', {
-      quantized: true,
-      progress_callback: progressCallback,
-      cache_dir: '/models' // Explicitly set a cache directory, though browser is usually indexedDB
-    });
+    console.log("Initializing OCR pipeline...");
+    try {
+      ocrPipeline = await pipeline('image-to-text', 'Xenova/trocr-base-handwritten', {
+        quantized: true,
+        progress_callback: progressCallback,
+      });
+      console.log("OCR pipeline initialized successfully.");
+    } catch (e) {
+      console.error("Critical error initializing OCR pipeline:", e);
+      throw e;
+    }
   }
   return ocrPipeline;
 }
