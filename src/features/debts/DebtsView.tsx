@@ -146,8 +146,9 @@ function AddDebtDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.reason.trim() || !form.amount || !form.memberId) return;
-    onSave(form);
+    const finalMemberId = form.memberId || members[0]?.id;
+    if (!form.reason.trim() || !form.amount || !finalMemberId) return;
+    onSave({ ...form, memberId: finalMemberId });
     setForm({ reason: '', amount: '', memberId: members[0]?.id ?? '', direction: 'owe' });
     onClose();
   };
@@ -204,7 +205,7 @@ function AddDebtDialog({
           <label className="form-field">
             Direction
             <select
-              className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
               value={form.direction}
               onChange={(e) =>
                 setForm((f) => ({ ...f, direction: e.target.value as DebtDirection }))
@@ -224,7 +225,7 @@ function AddDebtDialog({
               </p>
             ) : (
               <select
-                className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+                className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
                 value={form.memberId}
                 onChange={(e) => setForm((f) => ({ ...f, memberId: e.target.value }))}
               >

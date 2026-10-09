@@ -2,22 +2,25 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   Plus,
-  Check,
   ShoppingBasket,
   Receipt,
   House,
   Circle,
   CheckCircle2,
+  Check,
   Trash2,
   ArrowLeftRight,
   ChevronRight,
   Clock,
-  Camera,
   Sparkles,
+  Activity,
+  Lightbulb,
+  ImagePlus,
+  X,
 } from 'lucide-react';
 import { db } from '@/db';
 import type { GroceryItem, Bill, Member } from '@/db/schema';
-import { ScanGroceryModal } from './ScanGroceryModal';
+import { downscaleImage } from '@/ai';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -85,6 +88,231 @@ const GROCERY_CATEGORIES = [
   'Other',
 ];
 
+type GrocerySummaryPeriod = 'day' | 'week';
+
+function getGrocerySummaryRange(period: GrocerySummaryPeriod, now: Date): { start: Date; end: Date } {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (period === 'week') {
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  }
+  const end = new Date(start);
+  end.setDate(end.getDate() + (period === 'day' ? 1 : 7));
+  return { start, end };
+}
+
+function GroceryActivitySection({
+  title,
+  items,
+  period,
+  emptyMessage,
+  deleted = false,
+  checked = false,
+}: {
+  title: string;
+  items: GroceryItem[];
+  period: GrocerySummaryPeriod;
+  emptyMessage: string;
+  deleted?: boolean;
+  checked?: boolean;
+}) {
+  return (
+    <section className="mt-5">
+      <h3 className="mb-1 text-sm font-bold">{title} <span className="font-medium text-muted-foreground">({items.length})</span></h3>
+      {items.length === 0 ? (
+        <p className="py-2 text-xs text-muted-foreground">{emptyMessage}</p>
+      ) : (
+        <div className="divide-y divide-border">
+          {items.map((item) => (
+            <div className="flex items-center justify-between gap-3 py-3" key={item.id}>
+              <div className="min-w-0">
+                <p className={`truncate text-sm font-semibold ${deleted ? 'text-muted-foreground line-through' : ''}`}>
+                  {item.name}
+                </p>
+                <p className="text-xs text-muted-foreground">{item.category || 'Pantry'}</p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-xs font-semibold">{deleted ? 'Deleted' : checked ? 'Checked out' : 'On list'}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {period === 'week' && `${new Date(item.updatedAt).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })} · `}
+                  {new Date(item.updatedAt).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function GrocerySummaryDialog({
+  open,
+  groceries,
+  onClose,
+}: {
+  open: boolean;
+  groceries: GroceryItem[];
+  onClose: () => void;
+}) {
+  const [period, setPeriod] = useState<GrocerySummaryPeriod>('week');
+
+  if (!open) return null;
+
+  const now = new Date();
+  const { start, end } = getGrocerySummaryRange(period, now);
+  const recentGroceries = groceries
+    .filter((item) => {
+      const updatedAt = Date.parse(item.updatedAt);
+      return Number.isFinite(updatedAt) && updatedAt >= start.getTime() && updatedAt < end.getTime();
+    })
+    .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+  const checkedCount = recentGroceries.filter((item) => !item.deleted && item.checked).length;
+  const removedCount = recentGroceries.filter((item) => item.deleted).length;
+  const outstandingCount = recentGroceries.filter((item) => !item.deleted && !item.checked).length;
+  const checkedGroceries = recentGroceries.filter((item) => !item.deleted && item.checked);
+  const outstandingGroceries = recentGroceries.filter((item) => !item.deleted && !item.checked);
+  const deletedGroceries = recentGroceries.filter((item) => item.deleted);
+  const activeUpdatedCount = checkedCount + outstandingCount;
+  const completionRate = activeUpdatedCount === 0 ? 0 : Math.round((checkedCount / activeUpdatedCount) * 100);
+  const categoryPurchases = new Map<string, number>();
+  recentGroceries
+    .filter((item) => !item.deleted && item.checked)
+    .forEach((item) => {
+      const category = item.category || 'Pantry';
+      categoryPurchases.set(category, (categoryPurchases.get(category) ?? 0) + 1);
+    });
+  const mostPurchasedCategory = Array.from(categoryPurchases.entries())
+    .sort((a, b) => b[1] - a[1])[0];
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-overlay" aria-hidden="true" onClick={onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="grocery-summary-title"
+        className="fixed bottom-0 left-1/2 z-50 max-h-[85dvh] w-full max-w-[480px] -translate-x-1/2 overflow-y-auto rounded-t-2xl bg-card p-6 pb-[max(24px,env(safe-area-inset-bottom))] shadow-lg"
+      >
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <h2 id="grocery-summary-title" className="font-display text-xl font-extrabold">
+              Grocery activity
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {period === 'day' ? 'Today' : 'This week'} · {recentGroceries.length} {recentGroceries.length === 1 ? 'item' : 'items'} updated
+            </p>
+          </div>
+          <button
+            type="button"
+            className="rounded-lg border border-input px-3 py-2 text-sm font-semibold hover:bg-muted"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="segmented mb-5">
+          <button
+            type="button"
+            aria-pressed={period === 'day'}
+            className={period === 'day'
+              ? 'py-2 px-3 text-sm font-semibold rounded-md bg-card text-foreground shadow-xs cursor-pointer'
+              : 'py-2 px-3 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer'}
+            onClick={() => setPeriod('day')}
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            aria-pressed={period === 'week'}
+            className={period === 'week'
+              ? 'py-2 px-3 text-sm font-semibold rounded-md bg-card text-foreground shadow-xs cursor-pointer'
+              : 'py-2 px-3 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer'}
+            onClick={() => setPeriod('week')}
+          >
+            This week
+          </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-xl bg-secondary p-3 text-center">
+            <p className="text-xl font-extrabold text-primary">{checkedCount}</p>
+            <p className="text-xs text-muted-foreground">Checked off</p>
+          </div>
+          <div className="rounded-xl bg-muted p-3 text-center">
+            <p className="text-xl font-extrabold">{outstandingCount}</p>
+            <p className="text-xs text-muted-foreground">Still on list</p>
+          </div>
+          <div className="rounded-xl bg-peach p-3 text-center">
+            <p className="text-xl font-extrabold text-peach-ink">{removedCount}</p>
+            <p className="text-xs text-muted-foreground">Deleted</p>
+          </div>
+        </div>
+
+        <section className="mt-5 rounded-xl border border-primary/15 bg-secondary/60 p-4">
+          <h3 className="flex items-center gap-2 text-sm font-bold">
+            <Lightbulb className="size-4 text-primary" />
+            {period === 'day' ? "Today's insights" : "This week's insights"}
+          </h3>
+          {recentGroceries.length === 0 ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Add or update grocery items to see activity insights here.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-2 text-sm text-foreground">
+              {activeUpdatedCount > 0 && (
+                <li>
+                  {completionRate}% of active items updated {period === 'day' ? 'today' : 'this week'} are checked off
+                  ({checkedCount} of {activeUpdatedCount}).
+                </li>
+              )}
+              {mostPurchasedCategory && (
+                <li>
+                  Most commonly purchased: {mostPurchasedCategory[0]} ({mostPurchasedCategory[1]} {mostPurchasedCategory[1] === 1 ? 'item' : 'items'} checked off).
+                </li>
+              )}
+              {outstandingCount > 0 && (
+                <li>
+                  {outstandingCount} {outstandingCount === 1 ? 'item is' : 'items are'} still on the list and may need attention.
+                </li>
+              )}
+              {removedCount > 0 && (
+                <li>
+                  {removedCount} {removedCount === 1 ? 'item was' : 'items were'} removed from the list.
+                </li>
+              )}
+            </ul>
+          )}
+        </section>
+
+        <GroceryActivitySection
+          title="Checked out"
+          items={checkedGroceries}
+          period={period}
+          checked
+          emptyMessage={`No items checked out ${period === 'day' ? 'today' : 'this week'}.`}
+        />
+        <GroceryActivitySection
+          title="Still on list"
+          items={outstandingGroceries}
+          period={period}
+          emptyMessage={`No items remain on the list from ${period === 'day' ? 'today' : 'this week'}.`}
+        />
+        <GroceryActivitySection
+          title="Deleted"
+          items={deletedGroceries}
+          period={period}
+          deleted
+          emptyMessage={`No items deleted ${period === 'day' ? 'today' : 'this week'}.`}
+        />
+        <p className="mt-4 text-xs text-muted-foreground">
+          Activity uses each item’s latest update. Earlier changes to the same item aren’t stored.
+        </p>
+      </div>
+    </>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // PageHeading
 // ---------------------------------------------------------------------------
@@ -123,6 +351,7 @@ interface AddGroceryForm {
   name: string;
   category: string;
   addedBy: string;
+  photo?: string;
 }
 
 function AddGroceryDialog({
@@ -140,6 +369,7 @@ function AddGroceryDialog({
     name: '',
     category: 'Produce',
     addedBy: members[0]?.name ?? 'You',
+    photo: undefined,
   });
 
   if (!open) return null;
@@ -152,6 +382,7 @@ function AddGroceryDialog({
       name: '',
       category: 'Produce',
       addedBy: members[0]?.name ?? 'You',
+      photo: undefined,
     });
     onClose();
   };
@@ -174,6 +405,39 @@ function AddGroceryDialog({
         </h2>
         <form className="grid gap-4" onSubmit={handleSubmit}>
           <label className="form-field">
+            Photo (Optional)
+            {form.photo ? (
+              <div className="relative w-24 h-24">
+                <img src={form.photo} alt="Item" className="w-full h-full object-cover rounded-md border border-border" />
+                <button type="button" onClick={() => setForm(f => ({ ...f, photo: undefined }))} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 cursor-pointer">
+                  <X className="size-3" />
+                </button>
+              </div>
+            ) : (
+              <label className="h-20 w-full rounded-md border border-dashed border-input bg-background flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-secondary/20 transition-colors text-muted-foreground">
+                <ImagePlus className="size-6" />
+                <span className="text-xs">Attach a photo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const { dataUrl } = await downscaleImage(file, 400);
+                      setForm(f => ({ ...f, photo: dataUrl }));
+                    } catch (err) {
+                      console.error(err);
+                    }
+                  }}
+                />
+              </label>
+            )}
+          </label>
+
+          <label className="form-field">
             Item name
             <input
               required
@@ -188,7 +452,7 @@ function AddGroceryDialog({
           <label className="form-field">
             Category
             <select
-              className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
               value={form.category}
               onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
             >
@@ -203,7 +467,7 @@ function AddGroceryDialog({
           <label className="form-field">
             Added by
             <select
-              className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
               value={form.addedBy}
               onChange={(e) => setForm((f) => ({ ...f, addedBy: e.target.value }))}
             >
@@ -331,7 +595,7 @@ function AddBillDialog({
           <label className="form-field">
             Responsible person
             <select
-              className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
               value={form.responsibleMemberId}
               onChange={(e) => setForm((f) => ({ ...f, responsibleMemberId: e.target.value }))}
             >
@@ -379,8 +643,9 @@ export function ListsView({
 }) {
   const [tab, setTab] = useState<'Groceries' | 'Bills'>('Groceries');
   const [addGroceryOpen, setAddGroceryOpen] = useState(false);
-  const [scanGroceryOpen, setScanGroceryOpen] = useState(false);
   const [addBillOpen, setAddBillOpen] = useState(false);
+  const [grocerySummaryOpen, setGrocerySummaryOpen] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   // Live queries directly from Dexie IndexedDB
   const groceries = useLiveQuery(() => db.groceryItems.toArray(), []) ?? [];
@@ -390,7 +655,7 @@ export function ListsView({
   const activeMembers = members.filter((m) => !m.deleted);
   const memberMap = new Map(activeMembers.map((m) => [m.id, m]));
 
-  const activeGroceries = groceries.filter((g) => !g.deleted);
+  const activeGroceries = groceries.filter((g) => !g.deleted && !g.cleared);
   const activeBills = bills.filter((b) => !b.deleted);
 
   const remainingGroceries = activeGroceries.filter((g) => !g.checked).length;
@@ -415,13 +680,26 @@ export function ListsView({
     });
   }
 
+  async function handleCheckOutAllGroceries() {
+    const uncheckedItems = activeGroceries.filter((item) => !item.checked);
+    const now = new Date().toISOString();
+    await Promise.all(
+      uncheckedItems.map((item) =>
+        db.groceryItems.update(item.id, {
+          checked: true,
+          updatedAt: now,
+        })
+      )
+    );
+  }
+
   async function handleClearCheckedGroceries() {
     const checkedItems = activeGroceries.filter((g) => g.checked);
     const now = new Date().toISOString();
     await Promise.all(
       checkedItems.map((item) =>
         db.groceryItems.update(item.id, {
-          deleted: true,
+          cleared: true,
           updatedAt: now,
         })
       )
@@ -437,6 +715,7 @@ export function ListsView({
       category: form.category,
       checked: false,
       addedBy: form.addedBy,
+      photo: form.photo,
       updatedAt: now,
       updatedBy: 'me',
       deleted: false,
@@ -541,15 +820,7 @@ export function ListsView({
 
       {tab === 'Groceries' ? (
         <>
-          {/* Scan with Computer Vision button */}
-          <button
-            type="button"
-            className="w-full h-12 mb-4 inline-flex items-center justify-center gap-2 rounded-lg bg-secondary text-primary font-semibold hover:bg-secondary/80 transition-colors cursor-pointer"
-            onClick={() => setScanGroceryOpen(true)}
-          >
-            <Camera className="size-5" />
-            Scan grocery item (Camera / Library)
-          </button>
+
 
           {/* Grocery header summary */}
           <div className="flex justify-between items-center mb-5">
@@ -558,7 +829,14 @@ export function ListsView({
                 ? 'All caught up'
                 : `${remainingGroceries} ${remainingGroceries === 1 ? 'item' : 'items'} to pick up`}
             </span>
-            <span className="text-xs text-muted-foreground">Shared with family</span>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-primary hover:bg-secondary"
+              onClick={() => setGrocerySummaryOpen(true)}
+            >
+              <Activity className="size-3.5" />
+              Activity summary
+            </button>
           </div>
 
           {/* Grocery items grouped by category */}
@@ -569,22 +847,13 @@ export function ListsView({
               <p className="text-xs mt-1 text-muted-foreground/80">
                 Scan what you are holding or add pantry items manually.
               </p>
-              <div className="mt-4 flex justify-center gap-3">
+              <div className="mt-4 flex justify-center">
                 <button
                   type="button"
                   className="text-sm font-semibold text-primary underline-offset-4 hover:underline cursor-pointer"
                   onClick={() => setAddGroceryOpen(true)}
                 >
-                  Add manually
-                </button>
-                <span className="text-muted-foreground">·</span>
-                <button
-                  type="button"
-                  className="text-sm font-semibold text-primary underline-offset-4 hover:underline cursor-pointer inline-flex items-center gap-1"
-                  onClick={() => setScanGroceryOpen(true)}
-                >
-                  <Camera className="size-3.5" />
-                  Scan with camera
+                  Add item
                 </button>
               </div>
             </div>
@@ -603,11 +872,13 @@ export function ListsView({
                     </h2>
                     <div className="divide-y divide-border">
                       {itemsInCat.map((item) => (
-                        <div className="list-row group" key={item.id}>
+                        <div key={item.id} className="flex items-center gap-3 py-3 border-b border-border group">
+                          {/* Checkbox */}
                           <button
                             type="button"
                             className="p-1 -ml-1 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                            aria-label={item.checked ? `Uncheck ${item.name}` : `Check ${item.name}`}
+                            aria-label={item.checked ? `Move ${item.name} back to the list` : `Check out ${item.name}`}
+                            title={item.checked ? 'Move back to list' : 'Check out'}
                             onClick={() => handleToggleGrocery(item.id, item.checked)}
                           >
                             {item.checked ? (
@@ -616,24 +887,36 @@ export function ListsView({
                               <Circle className="size-6 text-muted-foreground" />
                             )}
                           </button>
-                          <div className="min-w-0 pr-2">
-                            <h3
-                              className={
-                                item.checked
-                                  ? 'line-through text-muted-foreground font-normal'
-                                  : 'font-semibold'
-                              }
+                          {/* Photo thumbnail */}
+                          {item.photo && (
+                            <button
+                              type="button"
+                              onClick={() => setZoomedImage(item.photo!)}
+                              className="shrink-0 cursor-zoom-in"
+                              aria-label={`View photo of ${item.name}`}
                             >
+                              <img
+                                src={item.photo}
+                                alt={item.name}
+                                className="size-10 rounded-md object-cover border border-border hover:opacity-90 transition-opacity"
+                              />
+                            </button>
+                          )}
+                          {/* Name & meta */}
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-semibold truncate ${item.checked ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                               {item.name}
-                            </h3>
-                            <p className="text-xs text-muted-foreground">
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
                               Added by {item.addedBy || 'Family'}
                             </p>
                           </div>
+                          {/* Delete */}
                           <button
                             type="button"
-                            className="p-1 text-muted-foreground/40 hover:text-destructive transition-colors cursor-pointer"
-                            aria-label={`Delete ${item.name}`}
+                            className="shrink-0 p-1 text-muted-foreground/40 hover:text-destructive transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                            aria-label={`Delete ${item.name} from the grocery list`}
+                            title="Delete item"
                             onClick={() => handleDeleteGrocery(item.id)}
                           >
                             <Trash2 className="size-4" />
@@ -649,19 +932,21 @@ export function ListsView({
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    className="h-11 inline-flex items-center justify-center gap-1.5 rounded-lg border border-input bg-card font-medium text-sm hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                    className="h-12 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-secondary text-primary font-bold text-[15px] hover:bg-secondary/80 transition-colors cursor-pointer mt-1"
                     onClick={() => setAddGroceryOpen(true)}
                   >
-                    <Plus className="size-4" />
-                    Add manual
+                    <Plus className="size-5" />
+                    Add item
                   </button>
+
                   <button
                     type="button"
-                    className="h-11 inline-flex items-center justify-center gap-1.5 rounded-lg bg-secondary text-primary font-medium text-sm hover:bg-secondary/80 transition-colors cursor-pointer"
-                    onClick={() => setScanGroceryOpen(true)}
+                    className="h-12 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground font-bold text-[15px] hover:bg-primary/90 transition-colors cursor-pointer mt-1 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={handleCheckOutAllGroceries}
+                    disabled={remainingGroceries === 0}
                   >
-                    <Camera className="size-4" />
-                    Scan item
+                    <Check className="size-5" />
+                    Check out all items
                   </button>
                 </div>
 
@@ -791,6 +1076,12 @@ export function ListsView({
         onSave={handleAddGrocery}
       />
 
+      <GrocerySummaryDialog
+        open={grocerySummaryOpen}
+        groceries={groceries}
+        onClose={() => setGrocerySummaryOpen(false)}
+      />
+
       <AddBillDialog
         open={addBillOpen}
         members={activeMembers}
@@ -798,13 +1089,30 @@ export function ListsView({
         onSave={handleAddBill}
       />
 
-      {/* On-Device Computer Vision Scanner */}
-      <ScanGroceryModal
-        open={scanGroceryOpen}
-        members={activeMembers}
-        onClose={() => setScanGroceryOpen(false)}
-        onConfirmItem={handleAddGrocery}
-      />
+      {/* Image lightbox */}
+      {zoomedImage && (
+        <div
+          className="lightbox-backdrop fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
+          onClick={() => setZoomedImage(null)}
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors cursor-pointer"
+            onClick={() => setZoomedImage(null)}
+            aria-label="Close"
+          >
+            <X className="size-7" />
+          </button>
+          <img
+            src={zoomedImage}
+            alt="Zoomed item"
+            className="lightbox-image max-w-full max-h-full rounded-2xl shadow-2xl object-contain"
+            style={{ maxHeight: '80vh' }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </>
   );
 }
