@@ -82,7 +82,7 @@ function PageHeading({
       </div>
       {onAdd && (
         <button
-          className="inline-flex items-center justify-center h-11 w-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs transition-all cursor-pointer"
+          className="inline-flex items-center justify-center h-11 w-11 rounded-full bg-[#112314] text-white hover:bg-[#1a351f] shadow-xs transition-all cursor-pointer active:scale-95"
           aria-label={`Add to ${title}`}
           onClick={onAdd}
         >
@@ -167,12 +167,12 @@ function AddMedicineDialog({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-overlay" aria-hidden="true" onClick={onClose} />
+      <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs" aria-hidden="true" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-med-title"
-        className="fixed bottom-0 left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 rounded-t-2xl bg-card p-6 pb-[max(24px,env(safe-area-inset-bottom))] shadow-lg max-h-[90dvh] overflow-y-auto"
+        className="fixed bottom-0 left-1/2 z-[70] w-full max-w-[480px] -translate-x-1/2 rounded-t-2xl bg-card p-6 pb-10 shadow-2xl max-h-[88dvh] overflow-y-auto"
       >
         <h2 id="add-med-title" className="font-display text-xl font-extrabold mb-4">
           Add medicine
@@ -339,7 +339,7 @@ function AddMedicineDialog({
 
           <button
             type="submit"
-            className="h-11 w-full rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer mt-1"
+            className="h-11 w-full rounded-full bg-[#112314] text-white font-semibold hover:bg-[#1a351f] transition-colors cursor-pointer mt-2 shadow-sm active:scale-95"
           >
             Save medicine
           </button>
@@ -478,7 +478,7 @@ function DoseCard({
       {isTaken ? (
         <button
           type="button"
-          className="w-full h-11 inline-flex items-center justify-center gap-2 rounded-xl bg-secondary text-primary font-semibold hover:bg-secondary/80 border border-primary/20 transition-all cursor-pointer"
+          className="w-full h-11 inline-flex items-center justify-center gap-2 rounded-full bg-[#eff8ec] text-[#3f751d] font-semibold hover:bg-[#e0f2da] border border-[#7EC151]/30 transition-all cursor-pointer"
           onClick={() => {
             if (matchingLog) onUndo(matchingLog.id, medicine.id);
           }}
@@ -490,7 +490,7 @@ function DoseCard({
         <div className="dose-actions">
           <button
             type="button"
-            className="h-11 inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 shadow-xs transition-all cursor-pointer text-sm"
+            className="h-11 inline-flex items-center justify-center gap-1.5 rounded-full bg-[#112314] text-[#FED24F] font-semibold hover:bg-[#1a351f] shadow-xs transition-all cursor-pointer text-sm active:scale-95"
             onClick={() => onTake(medicine, primaryTime)}
           >
             <Check className="size-4" />
@@ -498,7 +498,7 @@ function DoseCard({
           </button>
           <button
             type="button"
-            className="h-11 w-11 inline-flex items-center justify-center rounded-xl border border-input bg-card text-foreground hover:bg-accent hover:border-primary/40 shadow-xs cursor-pointer transition-all"
+            className="h-11 w-11 inline-flex items-center justify-center rounded-full border border-[#B2D959]/40 bg-[#f4faed] text-[#688a26] hover:bg-[#e9f5dd] shadow-xs cursor-pointer transition-all active:scale-95"
             title="Snooze for 10 minutes"
             aria-label={`Snooze ${medicine.name}`}
             onClick={() => onSnooze(medicine, primaryTime)}
@@ -507,7 +507,7 @@ function DoseCard({
           </button>
           <button
             type="button"
-            className="h-11 w-11 inline-flex items-center justify-center rounded-xl border border-input bg-card text-foreground hover:bg-accent hover:border-primary/40 shadow-xs cursor-pointer transition-all"
+            className="h-11 w-11 inline-flex items-center justify-center rounded-full border border-input bg-card text-foreground hover:bg-muted shadow-xs cursor-pointer transition-all active:scale-95"
             title="Skip this dose"
             aria-label={`Skip ${medicine.name}`}
             onClick={() => onSkip(medicine, primaryTime)}
@@ -739,7 +739,7 @@ export function MedicineView() {
       {/* Scan a medicine button */}
       <button
         type="button"
-        className="w-full h-11 mb-4 inline-flex items-center justify-center gap-2 rounded-xl bg-card border border-primary/30 text-primary font-semibold hover:border-primary hover:bg-secondary/40 shadow-xs transition-all cursor-pointer"
+        className="w-full h-11 mb-4 inline-flex items-center justify-center gap-2 rounded-full bg-[#112314] text-white font-semibold hover:bg-[#1a351f] shadow-xs transition-all cursor-pointer active:scale-95"
         onClick={() => setScanOpen(true)}
       >
         <ScanLine className="size-5" />

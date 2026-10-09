@@ -333,7 +333,7 @@ function PageHeading({
       </div>
       {onAdd && (
         <button
-          className="inline-flex items-center justify-center h-11 w-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs transition-all cursor-pointer"
+          className="inline-flex items-center justify-center h-11 w-11 rounded-full bg-[#112314] text-white hover:bg-[#1a351f] shadow-xs transition-all cursor-pointer active:scale-95"
           aria-label={`Add to ${title}`}
           onClick={onAdd}
         >
@@ -482,7 +482,7 @@ function AddGroceryDialog({
 
           <button
             type="submit"
-            className="h-11 w-full rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer mt-2"
+            className="h-11 w-full rounded-full bg-[#112314] text-white font-semibold hover:bg-[#1a351f] transition-colors cursor-pointer mt-2 active:scale-95"
           >
             Add to list
           </button>
@@ -623,7 +623,7 @@ function AddBillDialog({
 
           <button
             type="submit"
-            className="h-11 w-full rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer mt-2"
+            className="h-11 w-full rounded-full bg-[#112314] text-white font-semibold hover:bg-[#1a351f] transition-colors cursor-pointer mt-2 active:scale-95"
           >
             Add bill
           </button>
@@ -924,7 +924,7 @@ export function ListsView({
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    className="h-11 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-card border border-primary/30 text-primary font-bold text-sm hover:bg-secondary/40 hover:border-primary shadow-xs transition-all cursor-pointer mt-1"
+                    className="h-11 w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#112314] text-white font-bold text-sm hover:bg-[#1a351f] shadow-xs transition-all cursor-pointer mt-1 active:scale-95"
                     onClick={() => setAddGroceryOpen(true)}
                   >
                     <Plus className="size-4" />
@@ -933,7 +933,7 @@ export function ListsView({
 
                   <button
                     type="button"
-                    className="h-11 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 shadow-xs transition-all cursor-pointer mt-1 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="h-11 w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#eff8ec] text-[#3f751d] font-bold text-sm hover:bg-[#e0f2da] border border-[#7EC151]/30 shadow-xs transition-all cursor-pointer mt-1 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
                     onClick={handleCheckOutAllGroceries}
                     disabled={remainingGroceries === 0}
                   >
@@ -959,11 +959,11 @@ export function ListsView({
         <>
           {/* Bills balance band */}
           <div className="balance-band">
-            <span className="text-sm">Household bills</span>
+            <span className="text-sm font-semibold text-[#2e5c34]">Household bills</span>
             <strong>
               {totalUnpaidBills === 0 ? '₱0' : formatAmount(totalUnpaidBills)}
             </strong>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-[#3d6442]">
               {unpaidBills.length === 0
                 ? 'All caught up.'
                 : `${unpaidBills.length} ${unpaidBills.length === 1 ? 'bill' : 'bills'} to take care of`}
@@ -1014,8 +1014,8 @@ export function ListsView({
                       type="button"
                       className={
                         isPaid
-                          ? 'inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium bg-secondary text-primary hover:bg-secondary/80 transition-colors cursor-pointer'
-                          : 'inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer'
+                          ? 'inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-full text-xs font-semibold bg-[#eff8ec] text-[#3f751d] hover:bg-[#e0f2da] border border-[#7EC151]/30 transition-colors cursor-pointer'
+                          : 'inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-full text-xs font-semibold bg-[#112314] text-[#FED24F] hover:bg-[#1a351f] shadow-xs transition-colors cursor-pointer active:scale-95'
                       }
                       onClick={() => handleToggleBillPaid(bill)}
                       aria-label={isPaid ? `Mark ${bill.name} unpaid` : `Mark ${bill.name} paid`}
@@ -1035,7 +1035,7 @@ export function ListsView({
               <div className="pt-4">
                 <button
                   type="button"
-                  className="w-full h-11 inline-flex items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 bg-card text-primary font-semibold text-sm hover:bg-secondary/40 hover:border-primary shadow-xs transition-all cursor-pointer"
+                  className="w-full h-11 inline-flex items-center justify-center gap-2 rounded-full bg-[#112314] text-white font-semibold text-sm hover:bg-[#1a351f] shadow-xs transition-all cursor-pointer active:scale-95"
                   onClick={() => setAddBillOpen(true)}
                 >
                   <Plus className="size-4" />

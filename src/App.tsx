@@ -127,28 +127,11 @@ export default function App() {
       {activeTab !== 'home' && (
         <header className="app-header">
           <div className="brand cursor-pointer" onClick={() => setActiveTab('home')}>
-            <svg
-              className="brand-icon"
-              viewBox="0 0 32 36"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M16 2L3 11V31C3 32.1 3.9 33 5 33H27C28.1 33 29 32.1 29 31V11L16 2Z"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M11 33V18H21V33"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span>Kubo</span>
+            <img
+              src="/src/assets/kuboapp_logo.png"
+              alt="Kubo"
+              className="h-8 w-auto object-contain ml-1"
+            />
           </div>
           <div className="header-actions">
             {!isOnline && (

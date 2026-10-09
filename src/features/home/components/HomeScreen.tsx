@@ -3,18 +3,15 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import {
   Search,
   Plus,
-  ArrowUpRight,
-  ArrowDownLeft,
-  ArrowRightLeft,
   Pill,
   CalendarDays,
   ShoppingBasket,
   Wallet,
   CheckCircle2,
-  Clock,
   Sparkles,
   ChevronRight,
   ShieldCheck,
+  ArrowUpRight,
 } from 'lucide-react';
 import { db } from '@/db';
 import type { Member, Medicine, CalendarEvent, Bill, GroceryItem, Debt, DoseLog } from '@/db/schema';
@@ -95,20 +92,30 @@ export function HomeScreen({ onNavigate, onOpenMember, onMagicAdd }: HomeScreenP
   const currentMember = members.find((m: Member) => m.id === currentMemberId) ?? members[0];
   const now = new Date();
 
+  const myId = currentMember?.id ?? currentMemberId ?? 'me';
+  const isMe = (id: string) => id === 'me' || id === myId || (currentMember && id === currentMember.id);
+
   // Pure logic calculations
   const todayDoseList = todaysDoses(medicines, doseLogs, now);
   const upcomingEvent = nextEvent(events, now);
   const dueBills = billsDueSoon(bills, now, 7);
   const remainingGroceries = groceryCount(groceries);
-  const debtLines = debtSummaryLines(debts, currentMember?.id ?? currentMemberId ?? 'me', memberNameMap);
+  const debtLines = debtSummaryLines(debts, myId, memberNameMap);
 
-  // Compute total available balance
-  const totalBillsSum = bills.filter((b) => b.status === 'unpaid').reduce((acc, b) => acc + b.amount, 0);
-  const netDebtSum = debtLines.reduce((acc, d) => acc + d.netCentavos, 0) / 100;
-  
-  const displayBalanceFormatted = totalBillsSum > 0 
-    ? `₱${(22000 - totalBillsSum + netDebtSum).toLocaleString('en-PH', { maximumFractionDigits: 0 })}`
-    : '₱19,500';
+  // Compute net family balance from real debt data
+  const netDebtAmount = debts
+    .filter((d) => !d.deleted && !d.settled)
+    .reduce((sum, d) => {
+      if (isMe(d.toId)) return sum + Number(d.amount);
+      if (isMe(d.fromId)) return sum - Number(d.amount);
+      return sum;
+    }, 0);
+
+  const netDebtFormatted = netDebtAmount === 0
+    ? '₱0'
+    : netDebtAmount > 0
+    ? `+₱${netDebtAmount.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`
+    : `−₱${Math.abs(netDebtAmount).toLocaleString('en-PH', { maximumFractionDigits: 0 })}`;
 
   // Handle direct dose action
   const handleDoseAction = async (doseItem: DoseWithStatus, action: 'taken' | 'undo') => {
@@ -147,8 +154,16 @@ export function HomeScreen({ onNavigate, onOpenMember, onMagicAdd }: HomeScreenP
     <div className="min-h-screen bg-[#112314] text-[#f7fcf6] flex flex-col font-sans select-none antialiased">
       {/* 1. UPPER BOTANICAL ZONE (#FED24F, #FFF449, #B2D959, #7EC151 Palette) */}
       <div className="pt-4 pb-6 px-5 flex flex-col bg-gradient-to-b from-[#18311c] via-[#122515] to-[#0d1d10]">
-        {/* Top Header Row with Profile (Time removed per request) */}
-        <div className="flex items-center justify-end py-1 mb-2">
+        {/* Top Header Row with Logo + Profile */}
+        <div className="flex items-center justify-between py-1 mb-2">
+          {/* Logo */}
+          <img
+            src="/src/assets/kuboapp_logo.png"
+            alt="Kubo"
+            className="h-7 w-auto object-contain cursor-pointer"
+            onClick={() => onNavigate?.('home')}
+          />
+          {/* Profile dot */}
           <div
             className="size-8 rounded-full bg-[#FED24F]/20 border border-[#FED24F]/40 flex items-center justify-center text-sm cursor-pointer hover:opacity-85 transition-opacity shadow-sm"
             onClick={() => onNavigate?.('household')}
@@ -192,15 +207,18 @@ export function HomeScreen({ onNavigate, onOpenMember, onMagicAdd }: HomeScreenP
           </div>
         </div>
 
-        {/* Available Balance Headline & Magic AI Button */}
+        {/* Family Balances Headline & Magic AI Button */}
         <div className="mb-5 flex items-center justify-between">
           <div>
             <span className="text-[12px] font-semibold text-[#B2D959] tracking-wider uppercase">
-              Available balance
+              Family balances
             </span>
             <div className="text-[40px] font-extrabold tracking-tight text-white font-display leading-none mt-1">
-              {displayBalanceFormatted}
+              {netDebtFormatted}
             </div>
+            <p className="text-[11px] text-[#B2D959]/70 mt-1">
+              {netDebtAmount === 0 ? 'All settled up' : netDebtAmount > 0 ? 'owed to you' : 'you owe'}
+            </p>
           </div>
 
           {/* Magic AI Round Button (Outline matching fill, icon colored with background green) */}
@@ -269,14 +287,14 @@ export function HomeScreen({ onNavigate, onOpenMember, onMagicAdd }: HomeScreenP
 
       {/* 2. LOWER FRESH GARDEN SHEET (Luminous botanical cream surface) */}
       <div className="flex-1 bg-[#fbfcfa] text-[#122515] rounded-t-[34px] shadow-[0_-12px_40px_rgba(10,25,12,0.3)] px-6 pt-5 pb-36 transition-all mt-1 border-t border-[#e2ede0]">
-        {/* Section Header: Recent transactions */}
+        {/* Section Header: Family activity */}
         <div className="flex items-center justify-between mb-3.5">
           <h2 className="text-[18px] font-bold text-[#122515] tracking-tight font-display">
-            Recent transactions
+            Family activity
           </h2>
           <button
             type="button"
-            onClick={() => onNavigate?.('lists')}
+            onClick={() => onNavigate?.('debts')}
             className="text-[12px] font-semibold text-[#5c7a5f] hover:text-[#27482a] transition-colors cursor-pointer bg-transparent border-0 p-0"
           >
             See all
@@ -342,85 +360,8 @@ export function HomeScreen({ onNavigate, onOpenMember, onMagicAdd }: HomeScreenP
             Groceries
           </button>
         </div>
-
-        {/* Activity & Transaction Rows */}
+        {/* Activity & Transaction Rows from Database */}
         <div className="divide-y divide-[#edf4ea]">
-          {/* Row 1: Transfer (#FED24F tint) */}
-          {(filter === 'all' || filter === 'expenses') && (
-            <div
-              className="flex items-center justify-between py-3.5 hover:bg-[#f3f9f2] rounded-xl px-2 transition-colors cursor-pointer group"
-              onClick={() => onNavigate?.('debts')}
-            >
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="size-11 rounded-full bg-[#fef8e7] border border-[#FED24F]/40 flex items-center justify-center shrink-0 text-[#9e7f12] group-hover:bg-[#fdf0cf] transition-colors">
-                  <ArrowUpRight className="size-5" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-[15px] font-semibold text-[#122515] leading-tight">
-                    Transfer
-                  </h3>
-                  <p className="text-xs text-[#638066] mt-0.5">4:07pm</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-[15px] font-bold text-[#122515]">
-                  $1,050.00
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Row 2: Top up (#7EC151 Leaf Green) */}
-          {(filter === 'all' || filter === 'expenses') && (
-            <div
-              className="flex items-center justify-between py-3.5 hover:bg-[#f3f9f2] rounded-xl px-2 transition-colors cursor-pointer group"
-              onClick={() => onNavigate?.('debts')}
-            >
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="size-11 rounded-full bg-[#eff8ec] border border-[#7EC151]/30 flex items-center justify-center shrink-0 text-[#7EC151] group-hover:bg-[#e1f3db] transition-colors">
-                  <Plus className="size-5 text-[#7EC151]" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-[15px] font-semibold text-[#122515] leading-tight">
-                    Top up
-                  </h3>
-                  <p className="text-xs text-[#638066] mt-0.5">12:07pm</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-[15px] font-bold text-[#559a28]">
-                  +$2,400.00
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Row 3: Conversion (#B2D959 tint) */}
-          {(filter === 'all' || filter === 'expenses') && (
-            <div
-              className="flex items-center justify-between py-3.5 hover:bg-[#f3f9f2] rounded-xl px-2 transition-colors cursor-pointer group"
-              onClick={() => onNavigate?.('debts')}
-            >
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="size-11 rounded-full bg-[#f4faed] border border-[#B2D959]/35 flex items-center justify-center shrink-0 text-[#688a26] group-hover:bg-[#e9f5dd] transition-colors">
-                  <ArrowRightLeft className="size-4.5" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-[15px] font-semibold text-[#122515] leading-tight">
-                    Conversion
-                  </h3>
-                  <p className="text-xs text-[#638066] mt-0.5">4:07pm</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-[15px] font-bold text-[#122515]">
-                  $950.00
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Today's Dose Items from Database (#7EC151 Accent) */}
           {(filter === 'all' || filter === 'care') &&
             todayDoseList.slice(0, 3).map((doseItem, idx) => {
               const medMember = memberMap.get(doseItem.medicine.memberId);
