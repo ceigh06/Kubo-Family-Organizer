@@ -10,7 +10,7 @@ import {
   ChevronRight,
   Package,
 } from 'lucide-react';
-import { analyzeGroceryImage, downscaleImage, type ScannedGroceryResult } from '@/ai';
+import { detectYoloObjects, downscaleImage, type ScannedGroceryResult } from '@/ai';
 import type { Member } from '@/db/schema';
 
 const GROCERY_CATEGORIES = [
@@ -44,9 +44,7 @@ export function ScanGroceryModal({
   const [analyzing, setAnalyzing] = useState(false);
 
   // Review step form
-  const [detectedName, setDetectedName] = useState('');
-  const [detectedCategory, setDetectedCategory] = useState('Pantry');
-  const [detectedConfidence, setDetectedConfidence] = useState(0.9);
+  const [detectedItems, setDetectedItems] = useState<ScannedGroceryResult[]>([]);
   const [selectedMember, setSelectedMember] = useState(members[0]?.name ?? 'You');
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -133,11 +131,17 @@ export function ScanGroceryModal({
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
         setCapturedImage(dataUrl);
 
-        // Run local vision analysis
-        const result = await analyzeGroceryImage(canvas);
-        setDetectedName(result.name);
-        setDetectedCategory(result.category);
-        setDetectedConfidence(result.confidence);
+        // Run local vision analysis with YOLO for multiple items
+        const results = await detectYoloObjects(canvas);
+        if (results.length === 0) {
+          results.push({
+            name: 'Unknown Item',
+            category: 'Other',
+            confidence: 0,
+            source: 'camera'
+          });
+        }
+        setDetectedItems(results);
         stopCamera();
         setStep('review');
       }
@@ -158,12 +162,17 @@ export function ScanGroceryModal({
       const { canvas, dataUrl } = await downscaleImage(file);
       setCapturedImage(dataUrl);
 
-      // Run local vision analysis strictly on visual data (no filename hints)
-      const result = await analyzeGroceryImage(canvas);
-
-      setDetectedName(result.name);
-      setDetectedCategory(result.category);
-      setDetectedConfidence(result.confidence);
+      // Run local YOLO vision analysis
+      const results = await detectYoloObjects(canvas);
+      if (results.length === 0) {
+        results.push({
+          name: 'Unknown Item',
+          category: 'Other',
+          confidence: 0,
+          source: 'upload'
+        });
+      }
+      setDetectedItems(results);
       stopCamera();
       setStep('review');
     } catch (err) {
@@ -181,20 +190,27 @@ export function ScanGroceryModal({
     stopCamera();
 
     setTimeout(() => {
-      setDetectedName(name);
-      setDetectedCategory(category);
-      setDetectedConfidence(0.95);
+      setDetectedItems([{
+        name,
+        category,
+        confidence: 0.95,
+        source: 'preset'
+      }]);
       setStep('review');
       setAnalyzing(false);
     }, 300);
   }
 
   function handleConfirm() {
-    if (!detectedName.trim()) return;
-    onConfirmItem({
-      name: detectedName.trim(),
-      category: detectedCategory,
-      addedBy: selectedMember,
+    const validItems = detectedItems.filter(item => item.name.trim() !== '');
+    if (validItems.length === 0) return;
+    
+    validItems.forEach(item => {
+      onConfirmItem({
+        name: item.name.trim(),
+        category: item.category,
+        addedBy: selectedMember,
+      });
     });
     onClose();
   }
@@ -219,7 +235,7 @@ export function ScanGroceryModal({
               <Camera className="size-5" />
             </span>
             <h2 id="scan-grocery-title" className="font-display text-xl font-extrabold">
-              {step === 'camera' ? 'Scan grocery item' : 'Confirm detected item'}
+              {step === 'camera' ? 'Scan grocery items' : `Confirm ${detectedItems.length} items`}
             </h2>
           </div>
           <button
@@ -394,10 +410,10 @@ export function ScanGroceryModal({
               <div className="min-w-0">
                 <span className="pill-label bg-secondary text-primary font-bold inline-flex items-center gap-1 mb-1">
                   <Sparkles className="size-3" />
-                  {Math.round(detectedConfidence * 100)}% Match
+                  {detectedItems.length} items detected
                 </span>
                 <p className="text-xs text-muted-foreground">
-                  Recognized with local computer vision. Confirm before saving.
+                  Recognized with YOLO on-device vision. Edit before adding.
                 </p>
               </div>
             </div>
@@ -410,34 +426,55 @@ export function ScanGroceryModal({
                 handleConfirm();
               }}
             >
-              <label className="form-field">
-                Item name
-                <input
-                  required
-                  autoFocus
-                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
-                  value={detectedName}
-                  onChange={(e) => setDetectedName(e.target.value)}
-                  placeholder="e.g. Cooking Oil"
-                />
-              </label>
+              <div className="max-h-[30vh] overflow-y-auto space-y-3">
+                {detectedItems.map((item, idx) => (
+                  <div key={idx} className="p-3 border border-border rounded-md bg-secondary/20 grid gap-2 relative group">
+                    <button 
+                      type="button" 
+                      onClick={() => setDetectedItems(items => items.filter((_, i) => i !== idx))}
+                      className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="size-3" />
+                    </button>
+                    <div className="flex gap-2">
+                      <input
+                        required
+                        className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        value={item.name}
+                        onChange={(e) => {
+                          const newItems = [...detectedItems];
+                          newItems[idx].name = e.target.value;
+                          setDetectedItems(newItems);
+                        }}
+                        placeholder="e.g. Cooking Oil"
+                      />
+                      <select
+                        className="h-10 w-32 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        value={item.category}
+                        onChange={(e) => {
+                          const newItems = [...detectedItems];
+                          newItems[idx].category = e.target.value;
+                          setDetectedItems(newItems);
+                        }}
+                      >
+                        {GROCERY_CATEGORIES.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ))}
+                
+                {detectedItems.length === 0 && (
+                  <div className="text-center py-4 text-sm text-muted-foreground">
+                    No items left to add.
+                  </div>
+                )}
+              </div>
 
-              <label className="form-field">
-                Category
-                <select
-                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
-                  value={detectedCategory}
-                  onChange={(e) => setDetectedCategory(e.target.value)}
-                >
-                  {GROCERY_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="form-field">
+              <label className="form-field mt-2">
                 Added by
                 <select
                   className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
@@ -459,7 +496,7 @@ export function ScanGroceryModal({
                   className="h-12 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer"
                 >
                   <Check className="size-4" />
-                  Add to grocery list
+                  Add {detectedItems.length} item{detectedItems.length !== 1 ? 's' : ''} to grocery list
                 </button>
 
                 <button
