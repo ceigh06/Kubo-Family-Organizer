@@ -1,0 +1,16 @@
+# Node modules
+node_modules/
+
+# Environment files
+.env
+.env.*
+
+# Agent connections and large files
+.AGENTS/
+.agents/
+*.zip
+*.pdf
+*.docx
+dist/
+dist-ssr/
+*.local
