@@ -1,0 +1,1 @@
+export { HouseholdView } from './HouseholdView';
