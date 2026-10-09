@@ -116,7 +116,7 @@ export function CreateOrJoinScreen({ onDone, onNeedSignIn }: CreateOrJoinScreenP
           </p>
         </header>
         {error && <p role="alert" className="px-5 text-[15px] text-destructive">{error}</p>}
-        <ProfileSetupScreen initial={{}} onContinue={handleProfileForCreate} loading={loading} submitLabel="Create household" />
+        <ProfileSetupScreen initial={{}} onSave={handleProfileForCreate} saving={loading} submitLabel="Create household" />
         <button
           type="button"
           onClick={() => { setCreatedFlow(null); setMode('choose'); setError(''); }}
@@ -138,7 +138,7 @@ export function CreateOrJoinScreen({ onDone, onNeedSignIn }: CreateOrJoinScreenP
           </p>
         </header>
         {error && <p role="alert" className="px-5 text-[15px] text-destructive">{error}</p>}
-        <ProfileSetupScreen initial={{}} onContinue={handleProfileForJoin} loading={loading} submitLabel="Join household" />
+        <ProfileSetupScreen initial={{}} onSave={handleProfileForJoin} saving={loading} submitLabel="Join household" />
         <button
           type="button"
           onClick={() => { setJoinProfileMode(false); setError(''); }}
