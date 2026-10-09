@@ -1,0 +1,1 @@
+export { MedicineView } from './MedicineView';

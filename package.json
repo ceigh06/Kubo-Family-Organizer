@@ -1,34 +1,34 @@
 {
   "name": "kubo-family-organizer",
   "private": true,
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "test": "vitest run src/features/household/",
-    "test:watch": "vitest"
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "dexie": "^4.0",
-    "dexie-react-hooks": "^1.1"
+    "@tensorflow-models/mobilenet": "^2.1.1",
+    "@tensorflow/tfjs": "^4.22.0",
+    "dexie": "^4.0.11",
+    "dexie-react-hooks": "^1.1.7",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.575.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwind-merge": "^3.0.2",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
-    "@types/react": "^19.0",
-    "@types/react-dom": "^19.0",
+    "@tailwindcss/vite": "^4.2.1",
+    "@types/node": "^22.16.5",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.2.0",
-    "class-variance-authority": "^0.7",
-    "clsx": "^2.1",
-    "fake-indexeddb": "^6.0",
-    "lucide-react": "^0.400",
-    "react": "^19.0",
-    "react-dom": "^19.0",
-    "tailwind-merge": "^3.0",
-    "tailwindcss": "^4.3.3",
-    "typescript": "^7.0",
-    "vite": "^6.0",
-    "vite-plugin-pwa": "^2.0.0",
-    "vitest": "^5.0"
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.8.3",
+    "vite": "^8.1.5"
   }
 }
