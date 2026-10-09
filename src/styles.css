@@ -453,11 +453,52 @@
 .date-tile { display:flex;flex-direction:column;align-items:center;border-radius:6px;padding:7px;background:var(--sky);color:var(--sky-ink);font-size:10px; }
 .date-tile strong { font-size:17px;line-height:1.2; }
 .event-row h3 { font-size:13px;font-weight:700; }
-.event-row p { font-size:11px;color:var(--muted-foreground);margin-top:4px; }
-.nav-bar { position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--card);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:11px 10px max(14px,env(safe-area-inset-bottom));z-index:30; }
-.nav-item { display:flex;flex-direction:column;gap:5px;align-items:center;justify-content:center;height:48px;color:var(--muted-foreground);font-size:10px;font-weight:500;border-radius:6px; }
-.nav-item.active { color:var(--primary);background:var(--secondary);font-weight:700; }
-.nav-item svg { width:21px;height:21px; }
+.nav-bar {
+  position: fixed;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 420px;
+  background: rgba(18, 36, 21, 0.95);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(178, 217, 89, 0.25);
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 6px 12px;
+  z-index: 50;
+  box-shadow: 0 16px 36px -4px rgba(10, 25, 12, 0.55), 0 0 1px 1px rgba(178, 217, 89, 0.1) inset;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: rgba(235, 248, 235, 0.65);
+  border-radius: 9999px;
+  transition: all 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nav-item:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+.nav-item.active {
+  color: #112314;
+  background: #FED24F;
+  box-shadow: 0 4px 14px rgba(254, 210, 79, 0.35);
+  transform: scale(1.05);
+}
+.nav-item svg {
+  width: 20px;
+  height: 20px;
+}
+.nav-item span {
+  display: none;
+}
 .page-heading { display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;margin-bottom:24px; }
 .page-heading h1 { font-size:27px;font-weight:800; }
 .page-heading p { color:var(--muted-foreground);font-size:13px;margin-top:5px; }

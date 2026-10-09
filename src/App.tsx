@@ -124,63 +124,65 @@ export default function App() {
   return (
     <div className="app-shell min-h-screen flex flex-col justify-between">
       {/* Mobile App Header */}
-      <header className="app-header">
-        <div className="brand cursor-pointer" onClick={() => setActiveTab('home')}>
-          <svg
-            className="brand-icon"
-            viewBox="0 0 32 36"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M16 2L3 11V31C3 32.1 3.9 33 5 33H27C28.1 33 29 32.1 29 31V11L16 2Z"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M11 33V18H21V33"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span>Kubo</span>
-        </div>
-        <div className="header-actions">
-          {!isOnline && (
-            <span
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-peach text-peach-ink"
-              title="Working offline"
+      {activeTab !== 'home' && (
+        <header className="app-header">
+          <div className="brand cursor-pointer" onClick={() => setActiveTab('home')}>
+            <svg
+              className="brand-icon"
+              viewBox="0 0 32 36"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
             >
-              <WifiOff className="size-3" />
-              Offline
-            </span>
-          )}
-          <span
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-secondary text-primary"
-            title="Local AI ready on device"
-          >
-            <Cpu className="size-3" />
-            Local AI
-          </span>
-          <button className="header-bell p-2 text-foreground/80 hover:text-foreground cursor-pointer" aria-label="Notifications">
-            <Bell className="size-5" />
-          </button>
-          <div
-            className="profile-dot cursor-pointer"
-            title="Family Profile"
-            onClick={() => setActiveTab('household')}
-          >
-            🌸
+              <path
+                d="M16 2L3 11V31C3 32.1 3.9 33 5 33H27C28.1 33 29 32.1 29 31V11L16 2Z"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M11 33V18H21V33"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>Kubo</span>
           </div>
-        </div>
-      </header>
+          <div className="header-actions">
+            {!isOnline && (
+              <span
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-peach text-peach-ink"
+                title="Working offline"
+              >
+                <WifiOff className="size-3" />
+                Offline
+              </span>
+            )}
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-secondary text-primary"
+              title="Local AI ready on device"
+            >
+              <Cpu className="size-3" />
+              Local AI
+            </span>
+            <button className="header-bell p-2 text-foreground/80 hover:text-foreground cursor-pointer" aria-label="Notifications">
+              <Bell className="size-5" />
+            </button>
+            <div
+              className="profile-dot cursor-pointer"
+              title="Family Profile"
+              onClick={() => setActiveTab('household')}
+            >
+              🌸
+            </div>
+          </div>
+        </header>
+      )}
 
       {/* Main Feature View */}
-      <main className="page-body flex-1 page-enter" key={activeTab}>
+      <main className={`flex-1 page-enter ${activeTab === 'home' ? 'p-0' : 'page-body'}`} key={activeTab}>
         {activeTab === 'lists' && (
           <ListsView onNavigateToDebts={() => setActiveTab('debts')} />
         )}

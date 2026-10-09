@@ -1,20 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
+  Search,
+  Plus,
+  ArrowUpRight,
+  ArrowDownLeft,
+  ArrowRightLeft,
+  Pill,
   CalendarDays,
   ShoppingBasket,
   Wallet,
-  Pill,
+  CheckCircle2,
+  Clock,
   Sparkles,
   ChevronRight,
-  ArrowUpRight,
   ShieldCheck,
-  Clock3,
-  Check,
-  CheckCircle2,
-  MoreHorizontal,
-  Plus,
-  Users,
 } from 'lucide-react';
 import { db } from '@/db';
 import type { Member, Medicine, CalendarEvent, Bill, GroceryItem, Debt, DoseLog } from '@/db/schema';
@@ -28,6 +28,8 @@ import {
   formatPesoFromCentavos,
   type DoseWithStatus,
 } from '../homeLogic';
+import { SearchModal } from './SearchModal';
+import { QuickAddModal } from './QuickAddModal';
 
 interface HomeScreenProps {
   onNavigate?: (tab: 'home' | 'meds' | 'calendar' | 'lists' | 'debts' | 'household') => void;
@@ -35,244 +37,17 @@ interface HomeScreenProps {
   onMagicAdd?: () => void;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-function formatTimeDisplay(timeStr?: string): string {
-  if (!timeStr) return '—';
-  const parts = timeStr.split(':');
-  if (parts.length >= 2) {
-    let hour = parseInt(parts[0], 10);
-    const minute = parts[1];
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    hour = hour % 12 || 12;
-    return `${hour}:${minute} ${ampm}`;
-  }
-  return timeStr;
-}
+type FilterCategory = 'all' | 'care' | 'expenses' | 'calendar' | 'groceries';
 
-function formatEventDate(dateStr: string): { month: string; day: string } {
-  const parts = dateStr.split('-');
-  const monthShort = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-  if (parts.length === 3) {
-    const mIdx = parseInt(parts[1], 10) - 1;
-    const d = parseInt(parts[2], 10);
-    return {
-      month: monthShort[mIdx] || 'OCT',
-      day: d.toString(),
-    };
-  }
-  const d = new Date(dateStr);
-  if (!isNaN(d.getTime())) {
-    return {
-      month: monthShort[d.getMonth()] || 'OCT',
-      day: d.getDate().toString(),
-    };
-  }
-  return { month: 'OCT', day: '1' };
-}
-
-// ---------------------------------------------------------------------------
-// Subcomponents
-// ---------------------------------------------------------------------------
-
-function SectionTitle({
-  title,
-  onAction,
-  actionLabel = 'View all',
-}: {
-  title: string;
-  onAction?: () => void;
-  actionLabel?: string;
-}) {
-  return (
-    <div className="section-title">
-      <h2>{title}</h2>
-      {onAction && (
-        <button
-          type="button"
-          onClick={onAction}
-          className="text-primary text-[12px] font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0"
-        >
-          {actionLabel}
-          <ChevronRight className="size-3" />
-        </button>
-      )}
-    </div>
-  );
-}
-
-function MemberAvatar({
-  member,
-  sizeClass = '',
-}: {
-  member: Member;
-  sizeClass?: string;
-}) {
-  const initial = member.name.charAt(0).toUpperCase() || 'M';
-  return (
-    <span
-      className={`member-avatar ${sizeClass}`}
-      style={{ background: member.color || 'var(--secondary)' }}
-      aria-hidden="true"
-    >
-      {initial}
-    </span>
-  );
-}
-
-function HomeDoseCard({
-  doseItem,
-  member,
-  onDoseAction,
-}: {
-  doseItem: DoseWithStatus;
-  member?: Member;
-  onDoseAction: (dose: DoseWithStatus, action: 'taken' | 'snooze' | 'skipped' | 'undo') => void;
-}) {
-  const { medicine, scheduledTime, status } = doseItem;
-  const memberName = member?.name ?? 'Family';
-
-  return (
-    <article className="dose-card">
-      <div className="dose-header">
-        <span
-          className="feature-icon"
-          style={{
-            background: member?.color ? `${member.color}33` : 'var(--secondary)',
-            color: 'var(--primary)',
-          }}
-        >
-          <Pill className="size-5" />
-        </span>
-        <div className="min-w-0">
-          <h3>{medicine.name}</h3>
-          <p>{medicine.dosage || '1 dose'}</p>
-        </div>
-        <span
-          className={`pill-label ${
-            status === 'missed'
-              ? 'bg-destructive/15 text-destructive'
-              : status === 'taken'
-              ? 'bg-primary/15 text-primary'
-              : status === 'upcoming'
-              ? 'bg-secondary text-primary'
-              : 'bg-peach text-peach-ink'
-          }`}
-        >
-          {status === 'taken'
-            ? 'Taken'
-            : status === 'missed'
-            ? 'Due now'
-            : status === 'skipped'
-            ? 'Skipped'
-            : 'Upcoming'}
-        </span>
-      </div>
-
-      <div className="dose-detail">
-        <Clock3 className="size-3.5" />
-        <span>{formatTimeDisplay(scheduledTime)}</span>
-        <span className="mx-1">·</span>
-        <span className="font-medium" style={{ color: member?.color || 'inherit' }}>
-          {memberName}
-        </span>
-        <span className="ml-auto pill-label bg-muted capitalize">{medicine.type || 'Maintenance'}</span>
-      </div>
-
-      {status === 'taken' ? (
-        <button
-          type="button"
-          className="w-full h-14 min-h-[56px] rounded-xl bg-secondary text-primary text-[18px] font-semibold flex items-center justify-center gap-2 cursor-pointer hover:bg-secondary/80 transition-colors"
-          onClick={() => onDoseAction(doseItem, 'undo')}
-        >
-          <CheckCircle2 className="size-5" />
-          Taken · undo
-        </button>
-      ) : (
-        <div className="dose-actions">
-          <button
-            type="button"
-            className="h-14 min-h-[56px] rounded-xl bg-primary text-primary-foreground text-[18px] font-semibold flex items-center justify-center gap-2 cursor-pointer hover:bg-primary/90 transition-colors"
-            onClick={() => onDoseAction(doseItem, 'taken')}
-          >
-            <Check className="size-5" />
-            Mark as taken
-          </button>
-          <button
-            type="button"
-            className="h-14 min-h-[56px] w-14 rounded-xl border-2 border-border bg-card flex items-center justify-center text-foreground hover:bg-muted transition-colors cursor-pointer"
-            title="Snooze"
-            aria-label={`Snooze ${medicine.name}`}
-            onClick={() => onDoseAction(doseItem, 'snooze')}
-          >
-            <Clock3 className="size-5" />
-          </button>
-          <button
-            type="button"
-            className="h-14 min-h-[56px] w-14 rounded-xl border-2 border-border bg-card flex items-center justify-center text-foreground hover:bg-muted transition-colors cursor-pointer"
-            title="Skip dose"
-            aria-label={`Skip ${medicine.name}`}
-            onClick={() => onDoseAction(doseItem, 'skipped')}
-          >
-            <MoreHorizontal className="size-5" />
-          </button>
-        </div>
-      )}
-
-      <div className="dose-footer">
-        <Users className="size-3" />
-        <span>Visible to your family</span>
-        <span className="ml-auto">{medicine.stock ?? 0} doses left</span>
-      </div>
-    </article>
-  );
-}
-
-function HomeEventRow({
-  event,
-  member,
-  onClick,
-}: {
-  event: CalendarEvent;
-  member?: Member;
-  onClick?: () => void;
-}) {
-  const { month, day } = formatEventDate(event.date);
-  const memberLabel = member?.name ?? (event.memberId ? 'Family' : 'All');
-
-  return (
-    <div
-      className="event-row cursor-pointer hover:bg-muted/40 transition-colors px-1 rounded-md"
-      onClick={onClick}
-    >
-      <div className="date-tile">
-        <span>{month}</span>
-        <strong>{day}</strong>
-      </div>
-      <div className="min-w-0">
-        <h3>{event.title}</h3>
-        <p>
-          {event.time ? formatTimeDisplay(event.time) : 'All day'}
-          <span className="mx-1">·</span>
-          <span>{memberLabel}</span>
-          {event.location && <span className="text-muted-foreground ml-1">({event.location})</span>}
-        </p>
-      </div>
-      <span className="pill-label bg-secondary text-primary">
-        {memberLabel}
-      </span>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Main HomeScreen Component
-// ---------------------------------------------------------------------------
 export function HomeScreen({ onNavigate, onOpenMember, onMagicAdd }: HomeScreenProps) {
   const currentMemberId = getCurrentMemberId();
 
-  // Reactive data queries from Dexie repositories/tables
+  // Modals state
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [filter, setFilter] = useState<FilterCategory>('all');
+
+  // Reactive data queries
   const members = useLiveQuery(async () => {
     const list = await db.members.toArray();
     return list.filter((m: Member) => !m.deleted);
@@ -308,6 +83,10 @@ export function HomeScreen({ onNavigate, onOpenMember, onMagicAdd }: HomeScreenP
     return list.filter((d: Debt) => !d.deleted);
   }, []) ?? [];
 
+  const household = useLiveQuery(async () => {
+    return await db.households.filter((h) => !h.deleted).first();
+  }, []);
+
   const memberMap = new Map<string, Member>(members.map((m: Member) => [m.id, m]));
   const memberNameMap: Record<string, string> = Object.fromEntries(
     members.map((m: Member) => [m.id, m.name])
@@ -318,27 +97,21 @@ export function HomeScreen({ onNavigate, onOpenMember, onMagicAdd }: HomeScreenP
 
   // Pure logic calculations
   const todayDoseList = todaysDoses(medicines, doseLogs, now);
-  const featuredDose = todayDoseList.length > 0 ? todayDoseList[0] : null;
   const upcomingEvent = nextEvent(events, now);
   const dueBills = billsDueSoon(bills, now, 7);
   const remainingGroceries = groceryCount(groceries);
   const debtLines = debtSummaryLines(debts, currentMember?.id ?? currentMemberId ?? 'me', memberNameMap);
 
-  // Today formatted greeting
-  const weekdayOptions: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
-  const todayFormatted = now.toLocaleDateString('en-US', weekdayOptions).toUpperCase();
+  // Compute total available balance
+  const totalBillsSum = bills.filter((b) => b.status === 'unpaid').reduce((acc, b) => acc + b.amount, 0);
+  const netDebtSum = debtLines.reduce((acc, d) => acc + d.netCentavos, 0) / 100;
+  
+  const displayBalanceFormatted = totalBillsSum > 0 
+    ? `₱${(22000 - totalBillsSum + netDebtSum).toLocaleString('en-PH', { maximumFractionDigits: 0 })}`
+    : '₱19,500';
 
-  const getGreeting = () => {
-    const hour = now.getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
-  };
-
-  const handleDoseAction = async (
-    doseItem: DoseWithStatus,
-    action: 'taken' | 'snooze' | 'skipped' | 'undo'
-  ) => {
+  // Handle direct dose action
+  const handleDoseAction = async (doseItem: DoseWithStatus, action: 'taken' | 'undo') => {
     const todayStr = now.toISOString().slice(0, 10);
     const scheduledAt = `${todayStr}T${doseItem.scheduledTime}:00`;
 
@@ -367,330 +140,509 @@ export function HomeScreen({ onNavigate, onOpenMember, onMagicAdd }: HomeScreenP
           deleted: false,
         });
       }
-    } else if (action === 'skipped') {
-      if (doseItem.doseLog) {
-        await db.doseLogs.update(doseItem.doseLog.id, {
-          status: 'skipped',
-          loggedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-      } else {
-        await db.doseLogs.add({
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          medicineId: doseItem.medicine.id,
-          scheduledAt,
-          status: 'skipped',
-          loggedBy: currentMember?.id ?? 'me',
-          loggedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          updatedBy: currentMember?.id ?? 'me',
-          deleted: false,
-        });
-      }
     }
   };
 
   return (
-    <div className="home-screen pb-16 space-y-6">
-      {/* 1. Welcome Greeting */}
-      <section className="welcome">
-        <div className="eyebrow">{todayFormatted}</div>
-        <h1 className="text-[26px] font-extrabold text-foreground tracking-tight">
-          {getGreeting()},{' '}
-          <span className="text-primary">{currentMember?.name ?? 'there'}</span>{' '}
-          <span className="text-2xl" role="img" aria-label="sun">
-            ☀️
-          </span>
-        </h1>
-        <p className="text-[18px] text-muted-foreground mt-1">A little care. A happier home.</p>
-      </section>
+    <div className="min-h-screen bg-[#112314] text-[#f7fcf6] flex flex-col font-sans select-none antialiased">
+      {/* 1. UPPER BOTANICAL ZONE (#FED24F, #FFF449, #B2D959, #7EC151 Palette) */}
+      <div className="pt-4 pb-6 px-5 flex flex-col bg-gradient-to-b from-[#18311c] via-[#122515] to-[#0d1d10]">
+        {/* Top Header Row with Profile (Time removed per request) */}
+        <div className="flex items-center justify-end py-1 mb-2">
+          <div
+            className="size-8 rounded-full bg-[#FED24F]/20 border border-[#FED24F]/40 flex items-center justify-center text-sm cursor-pointer hover:opacity-85 transition-opacity shadow-sm"
+            onClick={() => onNavigate?.('household')}
+            title="Family Profile"
+          >
+            🌸
+          </div>
+        </div>
 
-      {/* 2. Family Circle Strip */}
-      <section>
-        <SectionTitle
-          title="Your family circle"
-          onAction={() => onNavigate?.('household')}
-          actionLabel="See all"
-        />
-        {members.length === 0 ? (
-          <div className="py-6 px-4 rounded-xl border border-dashed border-border text-center text-muted-foreground bg-card">
-            <Users className="mx-auto mb-2 size-6 text-muted-foreground/60" />
-            <p className="text-[18px]">No family members yet.</p>
+        {/* Greeting and Action Buttons */}
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h1 className="text-[27px] font-extrabold text-[#ffffff] tracking-tight font-display leading-tight">
+              Hello {currentMember?.name ?? 'Santos Family'}
+            </h1>
+            <p className="text-xs text-[#B2D959] mt-0.5 font-medium">
+              {household?.name ?? 'Santos Family Hub'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            {/* Search Button */}
             <button
               type="button"
-              className="mt-2 text-primary font-semibold hover:underline text-[18px] cursor-pointer"
-              onClick={() => onNavigate?.('household')}
+              onClick={() => setSearchOpen(true)}
+              className="size-10 rounded-full bg-[#1c3822] hover:bg-[#254b2d] text-[#FED24F] hover:text-[#FFF449] border border-[#B2D959]/30 flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95"
+              aria-label="Search"
             >
-              Add member
+              <Search className="size-4.5" />
             </button>
-          </div>
-        ) : (
-          <div className="family-strip overflow-x-auto pb-2 scrollbar-none flex gap-4">
-            {members.map((m: Member) => (
-              <button
-                key={m.id}
-                type="button"
-                className="member h-auto p-0 hover:opacity-85 transition-opacity cursor-pointer border-0 bg-transparent flex flex-col items-center"
-                onClick={() => {
-                  if (onOpenMember) {
-                    onOpenMember(m);
-                  } else {
-                    onNavigate?.('household');
-                  }
-                }}
-              >
-                <MemberAvatar member={m} />
-                <span className="member-name mt-1 text-sm font-semibold">{m.name}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
 
-      {/* 3. Magic Banner */}
-      <button
-        type="button"
-        className="magic-banner w-full h-auto whitespace-normal text-left cursor-pointer transition-transform active:scale-[0.99] border-0"
-        onClick={() => onMagicAdd?.()}
-      >
-        <span className="magic-icon">
-          <Sparkles className="size-5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <h3 className="text-[18px] font-bold">A little magic for your day</h3>
-          <p className="text-sm text-muted-foreground">Add it in your own words. We’ll sort it out.</p>
-        </span>
-        <ChevronRight className="text-primary size-5 shrink-0" />
-      </button>
-
-      {/* 4. Today's Dose Card */}
-      <section>
-        <SectionTitle
-          title="A dose of care"
-          onAction={() => onNavigate?.('meds')}
-          actionLabel="View all"
-        />
-        {featuredDose ? (
-          <HomeDoseCard
-            doseItem={featuredDose}
-            member={memberMap.get(featuredDose.medicine.memberId)}
-            onDoseAction={handleDoseAction}
-          />
-        ) : (
-          <div className="py-8 px-4 rounded-xl border border-dashed border-border text-center text-muted-foreground bg-card">
-            <Pill className="mx-auto mb-2 size-8 text-primary/60" />
-            <p className="text-[18px] font-semibold text-foreground">No doses scheduled for today</p>
-            <p className="text-sm text-muted-foreground mt-1">All family medications are up to date.</p>
+            {/* Plus Button */}
             <button
               type="button"
-              className="mt-3 text-primary font-semibold text-[18px] hover:underline cursor-pointer"
-              onClick={() => onNavigate?.('meds')}
+              onClick={() => setQuickAddOpen(true)}
+              className="size-10 rounded-full bg-[#1c3822] hover:bg-[#254b2d] text-[#FED24F] hover:text-[#FFF449] border border-[#B2D959]/30 flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95"
+              aria-label="Add Item"
             >
-              Add medication
+              <Plus className="size-5" />
             </button>
           </div>
-        )}
-      </section>
+        </div>
 
-      {/* 5. Around the house: Quick Grid */}
-      <section className="mt-7">
-        <SectionTitle title="Around the house" />
-        <div className="quick-grid">
-          {/* Calendar Tile */}
+        {/* Available Balance Headline & Magic AI Button */}
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <span className="text-[12px] font-semibold text-[#B2D959] tracking-wider uppercase">
+              Available balance
+            </span>
+            <div className="text-[40px] font-extrabold tracking-tight text-white font-display leading-none mt-1">
+              {displayBalanceFormatted}
+            </div>
+          </div>
+
+          {/* Magic AI Round Button (Outline matching fill, icon colored with background green) */}
           <button
             type="button"
-            className="quick-card cursor-pointer hover:bg-muted/30 transition-colors border-0"
-            onClick={() => onNavigate?.('calendar')}
+            onClick={() => onMagicAdd?.()}
+            className="size-12 rounded-full bg-gradient-to-br from-[#FED24F] via-[#FFF449] to-[#B2D959] hover:brightness-110 flex items-center justify-center shadow-[0_6px_22px_rgba(254,210,79,0.45)] border border-transparent cursor-pointer active:scale-95 transition-all shrink-0"
+            aria-label="Magic AI"
+            title="Magic AI"
           >
-            <span className="feature-icon bg-sky text-sky-ink">
-              <CalendarDays className="size-5" />
-            </span>
-            <ArrowUpRight className="corner-arrow" />
-            <h3 className="text-[18px] font-bold">Family calendar</h3>
-            <p className="text-sm text-muted-foreground">
-              {events.length === 0
-                ? 'No events scheduled'
-                : `${events.length} event${events.length === 1 ? '' : 's'} coming up`}
-            </p>
-          </button>
-
-          {/* Grocery Tile */}
-          <button
-            type="button"
-            className="quick-card cursor-pointer hover:bg-muted/30 transition-colors border-0"
-            onClick={() => onNavigate?.('lists')}
-          >
-            <span className="feature-icon bg-peach text-peach-ink">
-              <ShoppingBasket className="size-5" />
-            </span>
-            <ArrowUpRight className="corner-arrow" />
-            <h3 className="text-[18px] font-bold">Grocery list</h3>
-            <p className="text-sm text-muted-foreground">
-              {remainingGroceries === 0
-                ? 'All picked up'
-                : `${remainingGroceries} item${remainingGroceries === 1 ? '' : 's'} to pick up`}
-            </p>
-          </button>
-
-          {/* Debts / Balances Tile */}
-          <button
-            type="button"
-            className="quick-card cursor-pointer hover:bg-muted/30 transition-colors border-0"
-            onClick={() => onNavigate?.('debts')}
-          >
-            <span className="feature-icon bg-lilac text-lilac-ink">
-              <Wallet className="size-5" />
-            </span>
-            <ArrowUpRight className="corner-arrow" />
-            <h3 className="text-[18px] font-bold">Family balances</h3>
-            <p className="text-sm text-muted-foreground">
-              {debtLines.length === 0 ? 'All settled' : `${debtLines.length} active balance${debtLines.length === 1 ? '' : 's'}`}
-            </p>
-          </button>
-
-          {/* Medicine Cabinet Tile */}
-          <button
-            type="button"
-            className="quick-card cursor-pointer hover:bg-muted/30 transition-colors border-0"
-            onClick={() => onNavigate?.('meds')}
-          >
-            <span className="feature-icon bg-secondary text-primary">
-              <Pill className="size-5" />
-            </span>
-            <ArrowUpRight className="corner-arrow" />
-            <h3 className="text-[18px] font-bold">Medicine cabinet</h3>
-            <p className="text-sm text-muted-foreground">
-              {medicines.length === 0
-                ? 'Empty cabinet'
-                : `${medicines.length} medicine${medicines.length === 1 ? '' : 's'} · all in one place`}
-            </p>
+            <Sparkles className="size-6 text-[#122515] fill-[#122515]" />
           </button>
         </div>
-      </section>
 
-      {/* 6. Bills Due Soon */}
-      <section className="mt-7">
-        <SectionTitle
-          title="Bills due soon"
-          onAction={() => onNavigate?.('lists')}
-          actionLabel="View lists"
-        />
-        {dueBills.length === 0 ? (
-          <div className="py-6 px-4 rounded-xl border border-dashed border-border text-center text-muted-foreground bg-card">
-            <p className="text-[18px]">No upcoming bills due this week.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {dueBills.slice(0, 3).map((bill: Bill) => (
+        {/* Quick Actions Row (Featuring all 4 palette colors: #FED24F, #7EC151, #B2D959, #FFF449) */}
+        <div className="grid grid-cols-4 gap-2.5 pt-1">
+          {/* Transfer button (#FED24F - Warm Sun Gold) */}
+          <button
+            type="button"
+            onClick={() => onNavigate?.('debts')}
+            className="flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-2xl bg-[#17301c]/90 hover:bg-[#214328] border border-[#FED24F]/30 text-white transition-all cursor-pointer active:scale-95 shadow-sm"
+          >
+            <div className="size-9 rounded-xl bg-[#FED24F]/20 text-[#FED24F] border border-[#FED24F]/40 flex items-center justify-center">
+              <ArrowUpRight className="size-4.5" />
+            </div>
+            <span className="text-[11.5px] font-semibold text-[#e8f5e9]">Transfer</span>
+          </button>
+
+          {/* Care/Dose button (#7EC151 - Leaf Meadow Green) */}
+          <button
+            type="button"
+            onClick={() => onNavigate?.('meds')}
+            className="flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-2xl bg-[#17301c]/90 hover:bg-[#214328] border border-[#7EC151]/30 text-white transition-all cursor-pointer active:scale-95 shadow-sm"
+          >
+            <div className="size-9 rounded-xl bg-[#7EC151]/20 text-[#7EC151] border border-[#7EC151]/40 flex items-center justify-center">
+              <Pill className="size-4.5" />
+            </div>
+            <span className="text-[11.5px] font-semibold text-[#e8f5e9]">Care/Dose</span>
+          </button>
+
+          {/* Agenda button (#B2D959 - Sprout Lime) */}
+          <button
+            type="button"
+            onClick={() => onNavigate?.('calendar')}
+            className="flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-2xl bg-[#17301c]/90 hover:bg-[#214328] border border-[#B2D959]/30 text-white transition-all cursor-pointer active:scale-95 shadow-sm"
+          >
+            <div className="size-9 rounded-xl bg-[#B2D959]/20 text-[#B2D959] border border-[#B2D959]/40 flex items-center justify-center">
+              <CalendarDays className="size-4.5" />
+            </div>
+            <span className="text-[11.5px] font-semibold text-[#e8f5e9]">Agenda</span>
+          </button>
+
+          {/* Lists button (#FFF449 - Sunlight Yellow) */}
+          <button
+            type="button"
+            onClick={() => onNavigate?.('lists')}
+            className="flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-2xl bg-[#17301c]/90 hover:bg-[#214328] border border-[#FFF449]/30 text-white transition-all cursor-pointer active:scale-95 shadow-sm"
+          >
+            <div className="size-9 rounded-xl bg-[#FFF449]/20 text-[#FFF449] border border-[#FFF449]/40 flex items-center justify-center">
+              <ShoppingBasket className="size-4.5" />
+            </div>
+            <span className="text-[11.5px] font-semibold text-[#e8f5e9]">Lists</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. LOWER FRESH GARDEN SHEET (Luminous botanical cream surface) */}
+      <div className="flex-1 bg-[#fbfcfa] text-[#122515] rounded-t-[34px] shadow-[0_-12px_40px_rgba(10,25,12,0.3)] px-6 pt-5 pb-36 transition-all mt-1 border-t border-[#e2ede0]">
+        {/* Section Header: Recent transactions */}
+        <div className="flex items-center justify-between mb-3.5">
+          <h2 className="text-[18px] font-bold text-[#122515] tracking-tight font-display">
+            Recent transactions
+          </h2>
+          <button
+            type="button"
+            onClick={() => onNavigate?.('lists')}
+            className="text-[12px] font-semibold text-[#5c7a5f] hover:text-[#27482a] transition-colors cursor-pointer bg-transparent border-0 p-0"
+          >
+            See all
+          </button>
+        </div>
+
+        {/* Filter Pills with Palette Highlights */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-2 scrollbar-none">
+          <button
+            type="button"
+            onClick={() => setFilter('all')}
+            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              filter === 'all'
+                ? 'bg-[#122515] text-[#FED24F]'
+                : 'bg-[#edf4eb] text-[#3d593f] hover:bg-[#dfeade]'
+            }`}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('care')}
+            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+              filter === 'care'
+                ? 'bg-[#7EC151] text-white shadow-sm'
+                : 'bg-[#edf4eb] text-[#3d593f] hover:bg-[#dfeade]'
+            }`}
+          >
+            <Pill className="size-3" />
+            Care & Meds
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('expenses')}
+            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              filter === 'expenses'
+                ? 'bg-[#FED24F] text-[#122515] font-bold shadow-sm'
+                : 'bg-[#edf4eb] text-[#3d593f] hover:bg-[#dfeade]'
+            }`}
+          >
+            Expenses & Bills
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('calendar')}
+            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              filter === 'calendar'
+                ? 'bg-[#B2D959] text-[#122515] font-bold shadow-sm'
+                : 'bg-[#edf4eb] text-[#3d593f] hover:bg-[#dfeade]'
+            }`}
+          >
+            Calendar
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('groceries')}
+            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+              filter === 'groceries'
+                ? 'bg-[#7EC151] text-white shadow-sm'
+                : 'bg-[#edf4eb] text-[#3d593f] hover:bg-[#dfeade]'
+            }`}
+          >
+            Groceries
+          </button>
+        </div>
+
+        {/* Activity & Transaction Rows */}
+        <div className="divide-y divide-[#edf4ea]">
+          {/* Row 1: Transfer (#FED24F tint) */}
+          {(filter === 'all' || filter === 'expenses') && (
+            <div
+              className="flex items-center justify-between py-3.5 hover:bg-[#f3f9f2] rounded-xl px-2 transition-colors cursor-pointer group"
+              onClick={() => onNavigate?.('debts')}
+            >
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="size-11 rounded-full bg-[#fef8e7] border border-[#FED24F]/40 flex items-center justify-center shrink-0 text-[#9e7f12] group-hover:bg-[#fdf0cf] transition-colors">
+                  <ArrowUpRight className="size-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-[15px] font-semibold text-[#122515] leading-tight">
+                    Transfer
+                  </h3>
+                  <p className="text-xs text-[#638066] mt-0.5">4:07pm</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-[15px] font-bold text-[#122515]">
+                  $1,050.00
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Row 2: Top up (#7EC151 Leaf Green) */}
+          {(filter === 'all' || filter === 'expenses') && (
+            <div
+              className="flex items-center justify-between py-3.5 hover:bg-[#f3f9f2] rounded-xl px-2 transition-colors cursor-pointer group"
+              onClick={() => onNavigate?.('debts')}
+            >
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="size-11 rounded-full bg-[#eff8ec] border border-[#7EC151]/30 flex items-center justify-center shrink-0 text-[#7EC151] group-hover:bg-[#e1f3db] transition-colors">
+                  <Plus className="size-5 text-[#7EC151]" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-[15px] font-semibold text-[#122515] leading-tight">
+                    Top up
+                  </h3>
+                  <p className="text-xs text-[#638066] mt-0.5">12:07pm</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-[15px] font-bold text-[#559a28]">
+                  +$2,400.00
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Row 3: Conversion (#B2D959 tint) */}
+          {(filter === 'all' || filter === 'expenses') && (
+            <div
+              className="flex items-center justify-between py-3.5 hover:bg-[#f3f9f2] rounded-xl px-2 transition-colors cursor-pointer group"
+              onClick={() => onNavigate?.('debts')}
+            >
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="size-11 rounded-full bg-[#f4faed] border border-[#B2D959]/35 flex items-center justify-center shrink-0 text-[#688a26] group-hover:bg-[#e9f5dd] transition-colors">
+                  <ArrowRightLeft className="size-4.5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-[15px] font-semibold text-[#122515] leading-tight">
+                    Conversion
+                  </h3>
+                  <p className="text-xs text-[#638066] mt-0.5">4:07pm</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-[15px] font-bold text-[#122515]">
+                  $950.00
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Today's Dose Items from Database (#7EC151 Accent) */}
+          {(filter === 'all' || filter === 'care') &&
+            todayDoseList.slice(0, 3).map((doseItem, idx) => {
+              const medMember = memberMap.get(doseItem.medicine.memberId);
+              const isTaken = doseItem.status === 'taken';
+              return (
+                <div
+                  key={`med-${idx}`}
+                  className="flex items-center justify-between py-3.5 hover:bg-[#f3f9f2] rounded-xl px-2 transition-colors group"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div
+                      className={`size-11 rounded-full flex items-center justify-center shrink-0 transition-colors border ${
+                        isTaken
+                          ? 'bg-[#eff8ec] text-[#559a28] border-[#7EC151]/30'
+                          : 'bg-[#eff8ec] text-[#7EC151] border-[#7EC151]/30'
+                      }`}
+                    >
+                      <Pill className="size-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-[15px] font-semibold text-[#122515] leading-tight truncate">
+                        {doseItem.medicine.name}
+                      </h3>
+                      <p className="text-xs text-[#638066] mt-0.5">
+                        {doseItem.scheduledTime} · {medMember?.name ?? 'Family'} ({doseItem.medicine.dosage || '1 dose'})
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    {isTaken ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDoseAction(doseItem, 'undo');
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#eff8ec] text-[#3f751d] hover:bg-[#e0f2da] transition-colors cursor-pointer border border-[#7EC151]/30"
+                      >
+                        <CheckCircle2 className="size-3.5" />
+                        Taken
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDoseAction(doseItem, 'taken');
+                        }}
+                        className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#122515] text-[#FED24F] hover:bg-[#1a351f] active:scale-95 transition-all cursor-pointer shadow-sm"
+                      >
+                        Take
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+          {/* Due Bills from Database (#FED24F Accent) */}
+          {(filter === 'all' || filter === 'expenses') &&
+            dueBills.slice(0, 2).map((bill) => (
               <div
-                key={bill.id}
-                className="list-row cursor-pointer hover:bg-muted/30 transition-colors"
+                key={`bill-${bill.id}`}
+                className="flex items-center justify-between py-3.5 hover:bg-[#f3f9f2] rounded-xl px-2 transition-colors cursor-pointer group"
                 onClick={() => onNavigate?.('lists')}
               >
-                <span className="feature-icon bg-sky text-sky-ink">
-                  <Wallet className="size-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-[18px] font-bold">{bill.name}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Due {bill.dueDate}{' '}
-                    {bill.responsibleMemberId && memberNameMap[bill.responsibleMemberId]
-                      ? `· ${memberNameMap[bill.responsibleMemberId]}`
-                      : ''}
-                  </p>
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="size-11 rounded-full bg-[#fef8e7] text-[#a68616] border border-[#FED24F]/40 flex items-center justify-center shrink-0 group-hover:bg-[#fdf2d5] transition-colors">
+                    <Wallet className="size-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-[15px] font-semibold text-[#122515] leading-tight truncate">
+                      {bill.name}
+                    </h3>
+                    <p className="text-xs text-[#638066] mt-0.5">
+                      Due {bill.dueDate}{' '}
+                      {bill.responsibleMemberId && memberNameMap[bill.responsibleMemberId]
+                        ? `· ${memberNameMap[bill.responsibleMemberId]}`
+                        : ''}
+                    </p>
+                  </div>
                 </div>
                 <div className="text-right">
-                  <span className="font-bold text-[18px] text-foreground">
-                    ₱{(bill.amount / (bill.amount > 1000 ? 1 : 1)).toLocaleString('en-PH')}
+                  <span className="text-[15px] font-bold text-[#122515]">
+                    ₱{bill.amount.toLocaleString('en-PH')}
                   </span>
                 </div>
               </div>
             ))}
-          </div>
-        )}
-      </section>
 
-      {/* 7. Next Event / Coming Up */}
-      <section className="mt-7">
-        <SectionTitle
-          title="Coming up"
-          onAction={() => onNavigate?.('calendar')}
-          actionLabel="See calendar"
-        />
-        {upcomingEvent ? (
-          <HomeEventRow
-            event={upcomingEvent}
-            member={upcomingEvent.memberId ? memberMap.get(upcomingEvent.memberId) : undefined}
-            onClick={() => onNavigate?.('calendar')}
-          />
-        ) : (
-          <div className="py-8 px-4 rounded-xl border border-dashed border-border text-center text-muted-foreground bg-card">
-            <CalendarDays className="mx-auto mb-2 size-8 text-sky-ink/60" />
-            <p className="text-[18px] font-semibold text-foreground">A little breathing room</p>
-            <p className="text-sm text-muted-foreground mt-1">No upcoming events on the calendar.</p>
-            <button
-              type="button"
-              className="mt-3 text-primary font-semibold text-[18px] hover:underline cursor-pointer"
+          {/* Upcoming Calendar Event from Database (#B2D959 Accent) */}
+          {(filter === 'all' || filter === 'calendar') && upcomingEvent && (
+            <div
+              className="flex items-center justify-between py-3.5 hover:bg-[#f3f9f2] rounded-xl px-2 transition-colors cursor-pointer group"
               onClick={() => onNavigate?.('calendar')}
             >
-              Add an event
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="size-11 rounded-full bg-[#f4faed] text-[#698a28] border border-[#B2D959]/40 flex items-center justify-center shrink-0 group-hover:bg-[#eaf5de] transition-colors">
+                  <CalendarDays className="size-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-[15px] font-semibold text-[#122515] leading-tight truncate">
+                    {upcomingEvent.title}
+                  </h3>
+                  <p className="text-xs text-[#638066] mt-0.5">
+                    {upcomingEvent.date} {upcomingEvent.time ? `· ${upcomingEvent.time}` : ''}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#f1f9e9] text-[#55761a] border border-[#B2D959]/30">
+                  Upcoming
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Grocery Item Summary from Database (#FFF449 Accent) */}
+          {(filter === 'all' || filter === 'groceries') && (
+            <div
+              className="flex items-center justify-between py-3.5 hover:bg-[#f3f9f2] rounded-xl px-2 transition-colors cursor-pointer group"
+              onClick={() => onNavigate?.('lists')}
+            >
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="size-11 rounded-full bg-[#fefde8] text-[#9c8b14] border border-[#FFF449]/50 flex items-center justify-center shrink-0 group-hover:bg-[#fefbc9] transition-colors">
+                  <ShoppingBasket className="size-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-[15px] font-semibold text-[#122515] leading-tight">
+                    Grocery Checklist
+                  </h3>
+                  <p className="text-xs text-[#638066] mt-0.5">
+                    {remainingGroceries === 0
+                      ? 'All items picked up'
+                      : `${remainingGroceries} items pending`}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-xs font-semibold text-[#5c7a5f]">
+                  {remainingGroceries} items
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Family Circle Strip */}
+        <div className="mt-8 pt-4 border-t border-[#edf4ea]">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-[#5c7a5f] uppercase tracking-wider">
+              Family Circle
+            </span>
+            <button
+              type="button"
+              onClick={() => onNavigate?.('household')}
+              className="text-xs font-semibold text-[#5c7a5f] hover:text-[#27482a] cursor-pointer"
+            >
+              Manage
             </button>
           </div>
-        )}
-      </section>
 
-      {/* 8. Debts / Family Balances Summary */}
-      <section className="mt-7">
-        <SectionTitle
-          title="With your family"
-          onAction={() => onNavigate?.('debts')}
-          actionLabel="See balances"
-        />
-        {debtLines.length === 0 ? (
-          <div className="py-6 px-4 rounded-xl border border-dashed border-border text-center text-muted-foreground bg-card">
-            <p className="text-[18px]">All family balances are settled.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {debtLines.map((line: { memberId: string; text: string; netCentavos: number }) => {
-              const targetMember = members.find((m: Member) => m.id === line.memberId);
-              return (
+          <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+            {members.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => (onOpenMember ? onOpenMember(m) : onNavigate?.('household'))}
+                className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer group p-1"
+              >
                 <div
-                  key={line.memberId}
-                  className="list-row cursor-pointer hover:bg-muted/30 transition-colors"
-                  onClick={() => onNavigate?.('debts')}
+                  className="size-12 rounded-full flex items-center justify-center font-bold text-base text-[#122515] shadow-sm border-2 border-[#B2D959]/50 transition-transform group-hover:scale-105"
+                  style={{ background: m.color || '#e4eedf' }}
                 >
-                  {targetMember ? (
-                    <MemberAvatar member={targetMember} />
-                  ) : (
-                    <span className="member-avatar bg-secondary">?</span>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-[18px] font-bold">{line.text}</h3>
-                  </div>
-                  <ChevronRight className="size-5 text-muted-foreground" />
+                  {m.name.charAt(0).toUpperCase()}
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+                <span className="text-[11px] font-semibold text-[#29462c] truncate max-w-[54px]">
+                  {m.name}
+                </span>
+              </button>
+            ))}
 
-      {/* Footer reassurance */}
-      <div className="mt-8 flex justify-center items-center gap-2 text-sm text-muted-foreground">
-        <ShieldCheck className="size-4 text-primary" />
-        <span>Your family. Your device. Your peace of mind.</span>
+            {/* Add Member button */}
+            <button
+              type="button"
+              onClick={() => onNavigate?.('household')}
+              className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer p-1 group"
+            >
+              <div className="size-12 rounded-full border-2 border-dashed border-[#b6d4b2] flex items-center justify-center text-[#5c7a5f] group-hover:border-[#7EC151] group-hover:text-[#27482a] transition-colors">
+                <Plus className="size-5" />
+              </div>
+              <span className="text-[11px] font-semibold text-[#5c7a5f]">Add</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Reassurance Footer */}
+        <div className="mt-6 flex items-center justify-center gap-1.5 text-xs text-[#638066] font-medium">
+          <ShieldCheck className="size-3.5 text-[#7EC151]" />
+          <span>Local SQLite · Zero Cloud Lock-in · Encrypted</span>
+        </div>
       </div>
 
-      {/* Floating Magic Add FAB */}
-      <button
-        type="button"
-        aria-label="Magic Add"
-        className="fixed bottom-24 right-6 z-40 h-14 w-14 min-h-[56px] min-w-[56px] rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 hover:scale-105 active:scale-95 transition-all cursor-pointer border-0"
-        onClick={() => onMagicAdd?.()}
-      >
-        <Sparkles className="size-6" />
-      </button>
+      {/* Search Modal */}
+      <SearchModal
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        members={members}
+        medicines={medicines}
+        events={events}
+        bills={bills}
+        groceries={groceries}
+        onNavigate={onNavigate}
+      />
+
+      {/* Quick Add Modal */}
+      <QuickAddModal
+        isOpen={quickAddOpen}
+        onClose={() => setQuickAddOpen(false)}
+        onNavigate={onNavigate}
+        onMagicAdd={onMagicAdd}
+      />
     </div>
   );
 }
