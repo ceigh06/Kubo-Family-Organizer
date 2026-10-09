@@ -154,7 +154,7 @@ export default function App() {
           <ListsView onNavigateToDebts={() => setActiveTab('debts')} />
         )}
         {activeTab === 'debts' && <DebtsView />}
-        {activeTab === 'calendar' && <CalendarView />}
+        {activeTab === 'calendar' && <CalendarView householdId={activeHouseholdId} />}
         {activeTab === 'meds' && <MedicineView />}
         {activeTab === 'household' && (
           activeHouseholdId
