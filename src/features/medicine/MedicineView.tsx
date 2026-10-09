@@ -82,7 +82,7 @@ function PageHeading({
       </div>
       {onAdd && (
         <button
-          className="inline-flex items-center justify-center h-11 w-11 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+          className="inline-flex items-center justify-center h-11 w-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs transition-all cursor-pointer"
           aria-label={`Add to ${title}`}
           onClick={onAdd}
         >
@@ -478,7 +478,7 @@ function DoseCard({
       {isTaken ? (
         <button
           type="button"
-          className="w-full h-11 inline-flex items-center justify-center gap-2 rounded-lg bg-secondary text-primary font-semibold hover:bg-secondary/80 transition-colors cursor-pointer"
+          className="w-full h-11 inline-flex items-center justify-center gap-2 rounded-xl bg-secondary text-primary font-semibold hover:bg-secondary/80 border border-primary/20 transition-all cursor-pointer"
           onClick={() => {
             if (matchingLog) onUndo(matchingLog.id, medicine.id);
           }}
@@ -490,7 +490,7 @@ function DoseCard({
         <div className="dose-actions">
           <button
             type="button"
-            className="h-11 inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer text-sm"
+            className="h-11 inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 shadow-xs transition-all cursor-pointer text-sm"
             onClick={() => onTake(medicine, primaryTime)}
           >
             <Check className="size-4" />
@@ -498,7 +498,7 @@ function DoseCard({
           </button>
           <button
             type="button"
-            className="h-11 w-11 inline-flex items-center justify-center rounded-lg border border-input bg-card text-foreground hover:bg-accent cursor-pointer transition-colors"
+            className="h-11 w-11 inline-flex items-center justify-center rounded-xl border border-input bg-card text-foreground hover:bg-accent hover:border-primary/40 shadow-xs cursor-pointer transition-all"
             title="Snooze for 10 minutes"
             aria-label={`Snooze ${medicine.name}`}
             onClick={() => onSnooze(medicine, primaryTime)}
@@ -507,7 +507,7 @@ function DoseCard({
           </button>
           <button
             type="button"
-            className="h-11 w-11 inline-flex items-center justify-center rounded-lg border border-input bg-card text-foreground hover:bg-accent cursor-pointer transition-colors"
+            className="h-11 w-11 inline-flex items-center justify-center rounded-xl border border-input bg-card text-foreground hover:bg-accent hover:border-primary/40 shadow-xs cursor-pointer transition-all"
             title="Skip this dose"
             aria-label={`Skip ${medicine.name}`}
             onClick={() => onSkip(medicine, primaryTime)}
@@ -739,7 +739,7 @@ export function MedicineView() {
       {/* Scan a medicine button */}
       <button
         type="button"
-        className="w-full h-12 mb-4 inline-flex items-center justify-center gap-2 rounded-lg bg-secondary text-primary font-semibold hover:bg-secondary/80 transition-colors cursor-pointer"
+        className="w-full h-11 mb-4 inline-flex items-center justify-center gap-2 rounded-xl bg-card border border-primary/30 text-primary font-semibold hover:border-primary hover:bg-secondary/40 shadow-xs transition-all cursor-pointer"
         onClick={() => setScanOpen(true)}
       >
         <ScanLine className="size-5" />
@@ -748,10 +748,10 @@ export function MedicineView() {
 
       {/* Low stock alerts band */}
       {lowStockMedicines.length > 0 && (
-        <div className="mb-4 rounded-lg bg-peach/50 border border-peach-ink/20 p-3 flex items-start gap-2.5 text-xs text-peach-ink">
-          <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+        <div className="mb-4 rounded-xl bg-peach/20 border border-peach/50 p-3.5 flex items-start gap-2.5 text-xs text-peach-ink shadow-xs">
+          <AlertTriangle className="size-4 shrink-0 mt-0.5 text-[#856404]" />
           <div>
-            <strong>Refill needed:</strong>{' '}
+            <strong className="font-bold">Refill needed:</strong>{' '}
             {lowStockMedicines.map((m) => `${m.name} (${m.stock} left)`).join(', ')}
           </div>
         </div>
@@ -763,11 +763,7 @@ export function MedicineView() {
           <button
             key={f}
             type="button"
-            className={
-              filter === f
-                ? 'py-2 px-3 text-sm font-semibold rounded-md bg-card text-foreground shadow-xs cursor-pointer'
-                : 'py-2 px-3 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer'
-            }
+            data-active={filter === f}
             onClick={() => setFilter(f)}
           >
             {f}

@@ -333,7 +333,7 @@ function PageHeading({
       </div>
       {onAdd && (
         <button
-          className="inline-flex items-center justify-center h-11 w-11 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+          className="inline-flex items-center justify-center h-11 w-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs transition-all cursor-pointer"
           aria-label={`Add to ${title}`}
           onClick={onAdd}
         >
@@ -796,22 +796,14 @@ export function ListsView({
       <div className="segmented">
         <button
           type="button"
-          className={
-            tab === 'Groceries'
-              ? 'py-2 px-3 text-sm font-semibold rounded-md bg-card text-foreground shadow-xs cursor-pointer'
-              : 'py-2 px-3 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer'
-          }
+          data-active={tab === 'Groceries'}
           onClick={() => setTab('Groceries')}
         >
           Groceries
         </button>
         <button
           type="button"
-          className={
-            tab === 'Bills'
-              ? 'py-2 px-3 text-sm font-semibold rounded-md bg-card text-foreground shadow-xs cursor-pointer'
-              : 'py-2 px-3 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer'
-          }
+          data-active={tab === 'Bills'}
           onClick={() => setTab('Bills')}
         >
           Bills
@@ -932,21 +924,21 @@ export function ListsView({
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    className="h-12 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-secondary text-primary font-bold text-[15px] hover:bg-secondary/80 transition-colors cursor-pointer mt-1"
+                    className="h-11 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-card border border-primary/30 text-primary font-bold text-sm hover:bg-secondary/40 hover:border-primary shadow-xs transition-all cursor-pointer mt-1"
                     onClick={() => setAddGroceryOpen(true)}
                   >
-                    <Plus className="size-5" />
+                    <Plus className="size-4" />
                     Add item
                   </button>
 
                   <button
                     type="button"
-                    className="h-12 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground font-bold text-[15px] hover:bg-primary/90 transition-colors cursor-pointer mt-1 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="h-11 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 shadow-xs transition-all cursor-pointer mt-1 disabled:cursor-not-allowed disabled:opacity-50"
                     onClick={handleCheckOutAllGroceries}
                     disabled={remainingGroceries === 0}
                   >
-                    <Check className="size-5" />
-                    Check out all items
+                    <Check className="size-4" />
+                    Check out all
                   </button>
                 </div>
 
@@ -1043,7 +1035,7 @@ export function ListsView({
               <div className="pt-4">
                 <button
                   type="button"
-                  className="w-full h-11 inline-flex items-center justify-center gap-2 rounded-lg border border-input bg-card font-medium text-sm hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                  className="w-full h-11 inline-flex items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 bg-card text-primary font-semibold text-sm hover:bg-secondary/40 hover:border-primary shadow-xs transition-all cursor-pointer"
                   onClick={() => setAddBillOpen(true)}
                 >
                   <Plus className="size-4" />

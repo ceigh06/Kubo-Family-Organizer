@@ -47,7 +47,7 @@ function PageHeading({
       </div>
       {onAdd && (
         <button
-          className="inline-flex items-center justify-center h-11 w-11 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+          className="inline-flex items-center justify-center h-11 w-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs transition-all cursor-pointer"
           aria-label={`Add to ${title}`}
           onClick={onAdd}
         >
@@ -102,15 +102,17 @@ function DebtRow({
         </span>
       )}
       <div>
-        <h3>{label}</h3>
-        <p>{debt.reason}</p>
-        <p className="font-semibold">{formatAmount(debt.amount)}</p>
+        <h3 className="font-semibold text-sm">{label}</h3>
+        <p className="text-xs text-muted-foreground">{debt.reason}</p>
+        <p className={`font-bold text-sm mt-0.5 ${debt.settled ? 'text-muted-foreground line-through' : debt.fromId === 'me' ? 'text-[#a16207]' : 'text-primary'}`}>
+          {formatAmount(debt.amount)}
+        </p>
       </div>
       <button
         className={
           debt.settled
-            ? 'inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-md text-sm font-medium bg-secondary text-primary hover:bg-secondary/80 transition-colors cursor-pointer'
-            : 'inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer'
+            ? 'inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold bg-secondary text-primary hover:bg-secondary/80 border border-primary/20 shadow-xs transition-all cursor-pointer'
+            : 'inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold border border-input bg-card text-foreground hover:bg-secondary hover:border-primary/40 shadow-xs transition-all cursor-pointer'
         }
         onClick={() => onSettle(debt.id, !debt.settled)}
         aria-label={debt.settled ? `Unsettle debt with ${name}` : `Settle debt with ${name}`}

@@ -141,7 +141,7 @@ function PageHeading({
       </div>
       {onAdd && (
         <button
-          className="inline-flex items-center justify-center h-11 w-11 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+          className="inline-flex items-center justify-center h-11 w-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs transition-all cursor-pointer"
           aria-label={`Add to ${title}`}
           onClick={onAdd}
         >
@@ -897,44 +897,32 @@ export function CalendarView({ householdId }: { householdId?: string | null }) {
       <div className="segmented">
         <button
           type="button"
-          className={
-            mode === 'Month'
-              ? 'py-2 px-3 text-sm font-semibold rounded-md bg-card text-foreground shadow-xs cursor-pointer'
-              : 'py-2 px-3 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer'
-          }
+          data-active={mode === 'Month'}
           onClick={() => setMode('Month')}
         >
           Month
         </button>
         <button
           type="button"
-          className={
-            mode === 'Week'
-              ? 'py-2 px-3 text-sm font-semibold rounded-md bg-card text-foreground shadow-xs cursor-pointer'
-              : 'py-2 px-3 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer'
-          }
+          data-active={mode === 'Week'}
           onClick={() => setMode('Week')}
         >
           Week
         </button>
         <button
           type="button"
-          className={
-            mode === 'Agenda'
-              ? 'py-2 px-3 text-sm font-semibold rounded-md bg-card text-foreground shadow-xs cursor-pointer'
-              : 'py-2 px-3 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer'
-          }
+          data-active={mode === 'Agenda'}
           onClick={() => setMode('Agenda')}
         >
           Agenda
         </button>
       </div>
 
-      <div className="mb-4 grid grid-cols-[1fr_1fr_auto] gap-2">
+      <div className="mb-3 grid grid-cols-[1fr_1fr_auto] gap-2">
         <label className="sr-only" htmlFor="calendar-member-filter">Filter by family member</label>
         <select
           id="calendar-member-filter"
-          className="h-10 min-w-0 rounded-lg border border-input bg-background px-2 text-sm"
+          className="h-10 min-w-0 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-foreground shadow-xs hover:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
           value={memberFilter}
           onChange={(event) => setMemberFilter(event.target.value)}
         >
@@ -944,7 +932,7 @@ export function CalendarView({ householdId }: { householdId?: string | null }) {
         <label className="sr-only" htmlFor="calendar-type-filter">Filter by calendar item type</label>
         <select
           id="calendar-type-filter"
-          className="h-10 min-w-0 rounded-lg border border-input bg-background px-2 text-sm"
+          className="h-10 min-w-0 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-foreground shadow-xs hover:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
           value={typeFilter}
           onChange={(event) => {
             const value = event.target.value;
@@ -960,12 +948,16 @@ export function CalendarView({ householdId }: { householdId?: string | null }) {
         </select>
         <button
           type="button"
-          className="inline-flex items-center justify-center gap-1 rounded-md border border-input px-2 text-xs font-semibold hover:bg-muted disabled:opacity-50"
+          className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-semibold shadow-xs transition-colors cursor-pointer ${
+            notificationsEnabled
+              ? 'border-primary/40 bg-secondary text-primary'
+              : 'border-border bg-card text-foreground hover:bg-muted'
+          } disabled:opacity-50`}
           disabled={typeof Notification === 'undefined' || notificationsEnabled}
           onClick={() => void enableNotifications()}
           title={notificationsEnabled ? 'Reminder notifications are enabled' : 'Enable browser reminder notifications'}
         >
-          {notificationsEnabled ? <BellRing className="size-4" /> : <Bell className="size-4" />}
+          {notificationsEnabled ? <BellRing className="size-3.5" /> : <Bell className="size-3.5" />}
           <span>{notificationsEnabled ? 'On' : 'Notify'}</span>
         </button>
       </div>

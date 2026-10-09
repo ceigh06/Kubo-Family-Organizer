@@ -160,13 +160,6 @@ export default function App() {
                 Offline
               </span>
             )}
-            <span
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-secondary text-primary"
-              title="Local AI ready on device"
-            >
-              <Cpu className="size-3" />
-              Local AI
-            </span>
             <button className="header-bell p-2 text-foreground/80 hover:text-foreground cursor-pointer" aria-label="Notifications">
               <Bell className="size-5" />
             </button>
