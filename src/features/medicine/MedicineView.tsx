@@ -211,7 +211,7 @@ function AddMedicineDialog({
           <label className="form-field">
             For family member
             <select
-              className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
               value={form.memberId}
               onChange={(e) => setForm((f) => ({ ...f, memberId: e.target.value }))}
             >
@@ -229,7 +229,7 @@ function AddMedicineDialog({
                 <label className="form-field">
                   Times per day
                   <select
-                    className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
                     value={form.timesPerDay}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, timesPerDay: Number(e.target.value) }))

@@ -425,7 +425,7 @@ export function ScanGroceryModal({
               <label className="form-field">
                 Category
                 <select
-                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
                   value={detectedCategory}
                   onChange={(e) => setDetectedCategory(e.target.value)}
                 >
@@ -440,7 +440,7 @@ export function ScanGroceryModal({
               <label className="form-field">
                 Added by
                 <select
-                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
                   value={selectedMember}
                   onChange={(e) => setSelectedMember(e.target.value)}
                 >

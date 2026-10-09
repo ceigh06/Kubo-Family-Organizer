@@ -201,12 +201,19 @@ function AddCalendarItemDialog({
   });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const now = new Date();
+  const todayDateStr = formatDate(now.getFullYear(), now.getMonth(), now.getDate());
+  const pastEventDateError = 'Events must be scheduled for today or a future date.';
 
   if (!open) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim() || !form.date) return;
+    if (form.kind === 'event' && !itemId && form.date < todayDateStr) {
+      setSaveError(pastEventDateError);
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     try {
@@ -295,8 +302,15 @@ function AddCalendarItemDialog({
               <input
                 required
                 type="date"
+                min={form.kind === 'event' && !itemId ? todayDateStr : undefined}
                 className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
                 value={form.date}
+                onInvalid={(e) => {
+                  if (e.currentTarget.validity.rangeUnderflow) {
+                    e.preventDefault();
+                    setSaveError(pastEventDateError);
+                  }
+                }}
                 onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
               />
             </label>
@@ -326,7 +340,7 @@ function AddCalendarItemDialog({
           <label className="form-field">
             Repeat
             <select
-              className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
               value={form.recurrence}
               onChange={(e) => {
                 const recurrence = e.target.value;
@@ -375,7 +389,7 @@ function AddCalendarItemDialog({
           <label className="form-field">
             {form.kind === 'event' ? 'Family member' : 'Assignee'}
             <select
-              className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
               value={form.memberId}
               onChange={(e) => setForm((f) => ({ ...f, memberId: e.target.value }))}
             >
@@ -388,13 +402,23 @@ function AddCalendarItemDialog({
             </select>
           </label>
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="h-11 w-full rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer mt-2 disabled:opacity-60"
-          >
-            {saving ? 'Saving…' : itemId ? 'Save changes' : form.kind === 'event' ? 'Save event' : 'Save reminder'}
-          </button>
+          <div className="mt-2 flex gap-3">
+            <button
+              type="button"
+              disabled={saving}
+              onClick={onClose}
+              className="h-11 flex-1 rounded-lg border border-input bg-background font-semibold hover:bg-muted transition-colors cursor-pointer disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="h-11 flex-1 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-60"
+            >
+              {saving ? 'Saving…' : itemId ? 'Save changes' : form.kind === 'event' ? 'Save event' : 'Save reminder'}
+            </button>
+          </div>
         </form>
       </div>
     </>
@@ -683,6 +707,9 @@ export function CalendarView({ householdId }: { householdId: string | null }) {
     if (form.recurrence !== 'none' && (!form.recurrenceUntil || form.recurrenceUntil < form.date)) {
       throw new Error('Choose a repeat end date on or after the start date.');
     }
+    if (form.kind === 'event' && !itemId && form.date < todayDateStr) {
+      throw new Error('Events must be scheduled for today or a future date.');
+    }
 
     const timeNow = new Date().toISOString();
     if (form.kind === 'event') {
@@ -915,7 +942,7 @@ export function CalendarView({ householdId }: { householdId: string | null }) {
         <label className="sr-only" htmlFor="calendar-member-filter">Filter by family member</label>
         <select
           id="calendar-member-filter"
-          className="h-10 min-w-0 rounded-md border border-input bg-background px-2 text-sm"
+          className="h-10 min-w-0 rounded-lg border border-input bg-background px-2 text-sm"
           value={memberFilter}
           onChange={(event) => setMemberFilter(event.target.value)}
         >
@@ -925,7 +952,7 @@ export function CalendarView({ householdId }: { householdId: string | null }) {
         <label className="sr-only" htmlFor="calendar-type-filter">Filter by calendar item type</label>
         <select
           id="calendar-type-filter"
-          className="h-10 min-w-0 rounded-md border border-input bg-background px-2 text-sm"
+          className="h-10 min-w-0 rounded-lg border border-input bg-background px-2 text-sm"
           value={typeFilter}
           onChange={(event) => {
             const value = event.target.value;
