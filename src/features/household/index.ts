@@ -2,6 +2,7 @@ export * from './inviteCode';
 export * from './repository';
 export * from './householdService';
 export * from './currentMember';
+export * from './auth';
 export * from './seed';
 export * from './components/FamilyHubScreen';
 export * from './components/MemberCard';
