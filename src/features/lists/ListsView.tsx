@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import { db } from '@/db';
 import type { GroceryItem, Bill, Member } from '@/db/schema';
-import { ScanGroceryModal } from './ScanGroceryModal';
+import { downscaleImage } from '@/ai';
+import { ImagePlus, X } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -123,6 +124,7 @@ interface AddGroceryForm {
   name: string;
   category: string;
   addedBy: string;
+  photo?: string;
 }
 
 function AddGroceryDialog({
@@ -140,6 +142,7 @@ function AddGroceryDialog({
     name: '',
     category: 'Produce',
     addedBy: members[0]?.name ?? 'You',
+    photo: undefined,
   });
 
   if (!open) return null;
@@ -152,6 +155,7 @@ function AddGroceryDialog({
       name: '',
       category: 'Produce',
       addedBy: members[0]?.name ?? 'You',
+      photo: undefined,
     });
     onClose();
   };
@@ -173,6 +177,39 @@ function AddGroceryDialog({
           Add grocery item
         </h2>
         <form className="grid gap-4" onSubmit={handleSubmit}>
+          <label className="form-field">
+            Photo (Optional)
+            {form.photo ? (
+              <div className="relative w-24 h-24">
+                <img src={form.photo} alt="Item" className="w-full h-full object-cover rounded-md border border-border" />
+                <button type="button" onClick={() => setForm(f => ({ ...f, photo: undefined }))} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 cursor-pointer">
+                  <X className="size-3" />
+                </button>
+              </div>
+            ) : (
+              <label className="h-20 w-full max-w-sm rounded-md border border-dashed border-input bg-background flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-secondary/20 transition-colors text-muted-foreground">
+                <ImagePlus className="size-6" />
+                <span className="text-xs">Attach a photo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const { dataUrl } = await downscaleImage(file, 400);
+                      setForm(f => ({ ...f, photo: dataUrl }));
+                    } catch (err) {
+                      console.error(err);
+                    }
+                  }}
+                />
+              </label>
+            )}
+          </label>
+
           <label className="form-field">
             Item name
             <input
@@ -379,7 +416,6 @@ export function ListsView({
 }) {
   const [tab, setTab] = useState<'Groceries' | 'Bills'>('Groceries');
   const [addGroceryOpen, setAddGroceryOpen] = useState(false);
-  const [scanGroceryOpen, setScanGroceryOpen] = useState(false);
   const [addBillOpen, setAddBillOpen] = useState(false);
 
   // Live queries directly from Dexie IndexedDB
@@ -545,7 +581,7 @@ export function ListsView({
           <button
             type="button"
             className="w-full h-12 mb-4 inline-flex items-center justify-center gap-2 rounded-lg bg-secondary text-primary font-semibold hover:bg-secondary/80 transition-colors cursor-pointer"
-            onClick={() => setScanGroceryOpen(true)}
+            onClick={() => setAddGroceryOpen(true)}
           >
             <Camera className="size-5" />
             Scan grocery item (Camera / Library)
@@ -581,7 +617,7 @@ export function ListsView({
                 <button
                   type="button"
                   className="text-sm font-semibold text-primary underline-offset-4 hover:underline cursor-pointer inline-flex items-center gap-1"
-                  onClick={() => setScanGroceryOpen(true)}
+                  onClick={() => setAddGroceryOpen(true)}
                 >
                   <Camera className="size-3.5" />
                   Scan with camera
@@ -658,7 +694,7 @@ export function ListsView({
                   <button
                     type="button"
                     className="h-11 inline-flex items-center justify-center gap-1.5 rounded-lg bg-secondary text-primary font-medium text-sm hover:bg-secondary/80 transition-colors cursor-pointer"
-                    onClick={() => setScanGroceryOpen(true)}
+                    onClick={() => setAddGroceryOpen(true)}
                   >
                     <Camera className="size-4" />
                     Scan item
@@ -799,12 +835,7 @@ export function ListsView({
       />
 
       {/* On-Device Computer Vision Scanner */}
-      <ScanGroceryModal
-        open={scanGroceryOpen}
-        members={activeMembers}
-        onClose={() => setScanGroceryOpen(false)}
-        onConfirmItem={handleAddGrocery}
-      />
+      
     </>
   );
 }

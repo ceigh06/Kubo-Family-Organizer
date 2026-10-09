@@ -10,7 +10,7 @@ import {
   ChevronRight,
   Package,
 } from 'lucide-react';
-import { detectYoloObjects, downscaleImage, type ScannedGroceryResult } from '@/ai';
+import { analyzeGroceryImage, downscaleImage, type ScannedGroceryResult } from '@/ai';
 import type { Member } from '@/db/schema';
 
 const GROCERY_CATEGORIES = [
@@ -131,16 +131,9 @@ export function ScanGroceryModal({
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
         setCapturedImage(dataUrl);
 
-        // Run local vision analysis with YOLO for multiple items
-        const results = await detectYoloObjects(canvas);
-        if (results.length === 0) {
-          results.push({
-            name: 'Unknown Item',
-            category: 'Other',
-            confidence: 0,
-            source: 'camera'
-          });
-        }
+        // Run local OCR/Color analysis
+        const result = await analyzeGroceryImage(canvas);
+        const results = [result];
         setDetectedItems(results);
         stopCamera();
         setStep('review');
@@ -162,16 +155,9 @@ export function ScanGroceryModal({
       const { canvas, dataUrl } = await downscaleImage(file);
       setCapturedImage(dataUrl);
 
-      // Run local YOLO vision analysis
-      const results = await detectYoloObjects(canvas);
-      if (results.length === 0) {
-        results.push({
-          name: 'Unknown Item',
-          category: 'Other',
-          confidence: 0,
-          source: 'upload'
-        });
-      }
+      // Run local OCR/Color analysis
+      const result = await analyzeGroceryImage(canvas);
+      const results = [result];
       setDetectedItems(results);
       stopCamera();
       setStep('review');
@@ -413,7 +399,7 @@ export function ScanGroceryModal({
                   {detectedItems.length} items detected
                 </span>
                 <p className="text-xs text-muted-foreground">
-                  Recognized with YOLO on-device vision. Edit before adding.
+                  Recognized with local OCR. Edit before adding.
                 </p>
               </div>
             </div>

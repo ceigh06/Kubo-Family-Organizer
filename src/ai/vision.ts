@@ -24,7 +24,13 @@ interface GroceryCatalogItem {
   defaultQuantity: string;
 }
 
-const GROCERY_CATALOG: GroceryCatalogItem[] = [
+export const GROCERY_CATALOG: GroceryCatalogItem[] = [
+  {
+    keywords: ["eden", "cheese", "processed cheese", "getepe prana rinexpo"],
+    name: "Eden Cheese",
+    category: "Dairy & eggs",
+    defaultQuantity: "1 box (165g)",
+  },
   {
     keywords: ['oil', 'cooking oil', 'mantika', 'golden fiesta', 'minola', 'baguio oil', 'corn oil', 'vegetable oil', 'canola oil'],
     name: 'Cooking Oil',
@@ -32,7 +38,7 @@ const GROCERY_CATALOG: GroceryCatalogItem[] = [
     defaultQuantity: '1 bottle (1 L)',
   },
   {
-    keywords: ['soy sauce', 'toyo', 'silver swan', 'datu puti', 'marcapina', 'kikkoman'],
+    keywords: ['soy sauce', 'toyo', 'silver swan', 'datu puti', 'marcapina', 'kikkoman', 'etamlaputi'],
     name: 'Soy Sauce',
     category: 'Pantry',
     defaultQuantity: '1 bottle (385 ml)',
@@ -145,6 +151,12 @@ const GROCERY_CATALOG: GroceryCatalogItem[] = [
     category: 'Snacks & drinks',
     defaultQuantity: '1 pouch / 10 sachets',
   },
+  {
+    keywords: ['eggplant', 'talong', 'aubergine', 'eggplants'],
+    name: 'Eggplant (Talong)',
+    category: 'Produce',
+    defaultQuantity: '500 g',
+  },
 ];
 
 /**
@@ -158,56 +170,54 @@ export async function analyzeGroceryImage(
   hintText: string = ''
 ): Promise<ScannedGroceryResult> {
   let detectedText = hintText.trim().toLowerCase();
-  let mobilenetPredictions: Array<{ className: string, probability: number }> = [];
+  // 1. Removed MobileNet classification as requested. Only using OCR now.
 
-  // 1. Try TensorFlow.js MobileNet for true Object Classification
-  try {
-    const tf = await import('@tensorflow/tfjs');
-    const mobilenet = await import('@tensorflow-models/mobilenet');
-    
-    // Ensure backend is ready
-    await tf.ready();
-    const model = await mobilenet.load({ version: 2, alpha: 1.0 });
-
-    if (imageSource instanceof HTMLCanvasElement) {
-      // MobileNet classify takes ImageData, HTMLImageElement, HTMLCanvasElement, or HTMLVideoElement
-      mobilenetPredictions = await model.classify(imageSource);
-      console.log('MobileNet Predictions:', mobilenetPredictions);
-      
-      if (mobilenetPredictions.length > 0) {
-        // Fix MobileNet's notorious confusion between Tomatoes, Bell Peppers, and Rose Hips
-        let topClass = mobilenetPredictions[0].className.toLowerCase();
-        
-        if (topClass.includes('bell pepper') || topClass.includes('hip') || topClass.includes('strawberry')) {
-          // Force correction to tomato for this known visual edge case in grocery contexts
-          topClass = 'tomato';
+  // 2. OCR Text Extraction - Prioritize Native TextDetector API over Tesseract
+  let usedNativeOCR = false;
+  
+  if (typeof window !== 'undefined' && 'TextDetector' in window) {
+    try {
+      // @ts-ignore
+      const textDetector = new window.TextDetector();
+      if (imageSource instanceof HTMLCanvasElement) {
+        const texts = await textDetector.detect(imageSource);
+        if (texts && texts.length > 0) {
+          const rawText = texts.map((t: any) => t.rawValue).join(' ');
+          detectedText += ' ' + rawText.toLowerCase();
+          console.log('Native TextDetector OCR:', rawText);
+          usedNativeOCR = true;
         }
-
-        detectedText += ' ' + topClass;
-        
-        // Append other predictions just in case
-        const otherClasses = mobilenetPredictions.slice(1, 3).map(p => p.className.toLowerCase()).join(' ');
-        detectedText += ' ' + otherClasses;
       }
+    } catch (err) {
+      console.warn('Native TextDetector failed or not fully supported:', err);
     }
-  } catch (err) {
-    console.error('MobileNet classification failed:', err);
+  } else {
+    console.warn('TextDetector not available in this browser. To use it, enable chrome://flags/#enable-experimental-web-platform-features');
   }
 
-  // 2. Try Tesseract.js for robust local OCR text extraction
-  try {
-    const Tesseract = (await import('tesseract.js')).default;
-    const result = await Tesseract.recognize(
-      imageSource as any,
-      'eng',
-      { logger: (m) => console.log('OCR Progress:', m.status, Math.round(m.progress * 100) + '%') }
-    );
-    if (result?.data?.text) {
-      detectedText += ' ' + result.data.text.toLowerCase();
-      console.log('Tesseract OCR Extracted Text:', result.data.text);
+  // Fallback to Tesseract.js only if Native OCR didn't work or isn't available
+  if (!usedNativeOCR) {
+    try {
+      let tesseractSource = imageSource;
+      
+      // Preprocess image for much better Tesseract accuracy if it's a canvas
+      if (imageSource instanceof HTMLCanvasElement) {
+        tesseractSource = preprocessCanvasForOCR(imageSource);
+      }
+
+      const Tesseract = (await import('tesseract.js')).default;
+      const result = await Tesseract.recognize(
+        tesseractSource as any,
+        'eng',
+        { logger: (m) => console.log('Tesseract OCR Progress:', m.status, Math.round(m.progress * 100) + '%') }
+      );
+      if (result?.data?.text) {
+        detectedText += ' ' + result.data.text.toLowerCase();
+        console.log('Tesseract OCR Extracted Text:', result.data.text);
+      }
+    } catch (err) {
+      console.error('Tesseract OCR processing failed:', err);
     }
-  } catch (err) {
-    console.error('Tesseract OCR processing failed:', err);
   }
 
   // 3. Try native BarcodeDetector if available in browser as supplementary
@@ -294,6 +304,8 @@ export async function analyzeGroceryImage(
     for (const kw of item.keywords) {
       if (detectedText.includes(kw)) {
         score += kw.length * 2;
+      } else if (fuzzyMatch(detectedText, kw)) {
+        score += kw.length * 1.5;
       }
     }
     if (score > maxScore) {
@@ -315,25 +327,13 @@ export async function analyzeGroceryImage(
     };
   }
 
-  // Fallback: If OCR/MobileNet found some text but no catalog match, use a sensible name
-  if (mobilenetPredictions.length > 0) {
-    // Just use the top prediction class name, formatted nicely (e.g. 'bell pepper' -> 'Bell Pepper')
-    const topClass = mobilenetPredictions[0].className.split(',')[0]; // Sometimes classes are 'bell pepper, capsicum'
-    const generatedName = topClass.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    
-    return {
-      name: generatedName || 'Unknown Item',
-      category: dominantCategory,
-      quantity: '1 pc',
-      confidence: 0.65 + colorConfidenceBoost,
-      detectedText,
-      source: 'camera',
-    };
-  } else if (detectedText.length > 3 && detectedText !== hintText.trim().toLowerCase()) {
+  // Fallback: If OCR found some text but no catalog match, use a sensible name from OCR
+  if (detectedText.length > 3 && detectedText !== hintText.trim().toLowerCase()) {
     // Basic cleanup to find the most significant word sequence from OCR
     const words = detectedText.replace(/[^a-z0-9 ]/g, '').split(' ').filter(w => w.length > 2);
     if (words.length > 0) {
-      const generatedName = words.slice(0, 2).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      // Just use the first few words recognized as the name
+      const generatedName = words.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
       return {
         name: generatedName || 'Unknown Item',
         category: dominantCategory,
@@ -388,4 +388,83 @@ export function downscaleImage(file: File | Blob, maxWidth = 800): Promise<{ can
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * Preprocesses a canvas specifically for Tesseract.js OCR.
+ * Increases contrast, converts to grayscale, and thresholds the image
+ * to make text dramatically easier for the Tesseract engine to read.
+ */
+function preprocessCanvasForOCR(sourceCanvas: HTMLCanvasElement): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = sourceCanvas.width;
+  canvas.height = sourceCanvas.height;
+  const ctx = canvas.getContext('2d');
+  
+  if (!ctx) return sourceCanvas;
+  
+  ctx.drawImage(sourceCanvas, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  
+  for (let i = 0; i < data.length; i += 4) {
+    // 1. Grayscale
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+    
+    // 2. High Contrast & Threshold
+    // Push lighter pixels to white, darker to black to isolate text
+    gray = gray > 140 ? 255 : (gray < 80 ? 0 : gray);
+    
+    data[i] = gray;
+    data[i + 1] = gray;
+    data[i + 2] = gray;
+  }
+  
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+
+/**
+ * Fuzzy matching string logic to handle OCR misspellings
+ */
+function fuzzyMatch(text: string, keyword: string): boolean {
+  const words = text.split(/[\s,.-]+/);
+  const squishedText = text.replace(/[\s,.-]+/g, '');
+  const squishedKw = keyword.replace(/\s+/g, '');
+  
+  if (squishedKw.length > 5) {
+    if (levenshteinDistance(squishedText, squishedKw) <= 2) return true;
+    if (squishedText.includes(squishedKw)) return true;
+  }
+  
+  for (const w of words) {
+    if (w.length > 4 && levenshteinDistance(w, squishedKw) <= 2) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function levenshteinDistance(a: string, b: string): number {
+  const matrix: number[][] = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
 }
