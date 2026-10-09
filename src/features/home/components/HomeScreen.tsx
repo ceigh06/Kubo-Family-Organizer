@@ -27,6 +27,7 @@ import {
 } from '../homeLogic';
 import { SearchModal } from './SearchModal';
 import { QuickAddModal } from './QuickAddModal';
+import { MagicAddModal } from './MagicAddModal';
 
 interface HomeScreenProps {
   onNavigate?: (tab: 'home' | 'meds' | 'calendar' | 'lists' | 'debts' | 'household') => void;
@@ -42,6 +43,7 @@ export function HomeScreen({ onNavigate, onOpenMember, onMagicAdd }: HomeScreenP
   // Modals state
   const [searchOpen, setSearchOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [magicAddOpen, setMagicAddOpen] = useState(false);
   const [filter, setFilter] = useState<FilterCategory>('all');
 
   // Reactive data queries
@@ -224,7 +226,7 @@ export function HomeScreen({ onNavigate, onOpenMember, onMagicAdd }: HomeScreenP
           {/* Magic AI Round Button (Outline matching fill, icon colored with background green) */}
           <button
             type="button"
-            onClick={() => onMagicAdd?.()}
+            onClick={() => (onMagicAdd ? onMagicAdd() : setMagicAddOpen(true))}
             className="size-12 rounded-full bg-gradient-to-br from-[#FED24F] via-[#FFF449] to-[#B2D959] hover:brightness-110 flex items-center justify-center shadow-[0_6px_22px_rgba(254,210,79,0.45)] border border-transparent cursor-pointer active:scale-95 transition-all shrink-0"
             aria-label="Magic AI"
             title="Magic AI"
@@ -582,7 +584,19 @@ export function HomeScreen({ onNavigate, onOpenMember, onMagicAdd }: HomeScreenP
         isOpen={quickAddOpen}
         onClose={() => setQuickAddOpen(false)}
         onNavigate={onNavigate}
-        onMagicAdd={onMagicAdd}
+        onMagicAdd={() => {
+          setQuickAddOpen(false);
+          if (onMagicAdd) onMagicAdd();
+          else setMagicAddOpen(true);
+        }}
+      />
+
+      {/* Magic Add AI Modal */}
+      <MagicAddModal
+        isOpen={magicAddOpen}
+        onClose={() => setMagicAddOpen(false)}
+        onNavigate={onNavigate}
+        members={members}
       />
     </div>
   );
