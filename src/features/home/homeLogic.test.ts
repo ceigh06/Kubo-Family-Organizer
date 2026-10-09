@@ -7,10 +7,7 @@ import {
 } from './homeLogic';
 import type { Medicine, DoseLog, CalendarEvent, Bill, GroceryItem, Debt } from '../../db/schema';
 
-// Use vitest globals if present (e.g. inside vitest) or define them
-declare const describe: (name: string, fn: () => void) => void;
-declare const it: (name: string, fn: () => void) => void;
-declare const expect: (actual: any) => any;
+import { describe, it, expect } from 'vitest';
 
 describe('homeLogic', () => {
   describe('todaysDoses', () => {

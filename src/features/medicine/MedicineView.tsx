@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   Plus,
@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { db } from '@/db';
 import type { Medicine, DoseLog, Member } from '@/db/schema';
-import { scanMedicineLabel } from '@/ai/ocr';
+import { ScanMedicineModal } from './ScanMedicineModal';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -136,6 +136,25 @@ function AddMedicineDialog({
     memberId: initialValues?.memberId ?? (members[0]?.id ?? 'me'),
     minIntervalHours: initialValues?.minIntervalHours ?? '4',
   });
+
+  // Re-sync form whenever opened with new initial values (e.g. from OCR scanner)
+  useEffect(() => {
+    if (open) {
+      setForm({
+        name: initialValues?.name ?? '',
+        dosage: initialValues?.dosage ?? '50 mg · 1 tablet',
+        type: initialValues?.type ?? 'maintenance',
+        timesPerDay: initialValues?.timesPerDay ?? 1,
+        scheduledTime1: initialValues?.scheduledTime1 ?? '08:00',
+        scheduledTime2: initialValues?.scheduledTime2 ?? '20:00',
+        instructions: initialValues?.instructions ?? 'Take with water after meals',
+        stock: initialValues?.stock ?? '30',
+        refillThreshold: initialValues?.refillThreshold ?? '7',
+        memberId: initialValues?.memberId ?? (members[0]?.id ?? 'me'),
+        minIntervalHours: initialValues?.minIntervalHours ?? '4',
+      });
+    }
+  }, [open, initialValues, members]);
 
   if (!open) return null;
 
@@ -330,165 +349,7 @@ function AddMedicineDialog({
   );
 }
 
-// ---------------------------------------------------------------------------
-// ScanMedicineModal
-// ---------------------------------------------------------------------------
-function ScanMedicineModal({
-  open,
-  onClose,
-  onApplyExtracted,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onApplyExtracted: (med: Partial<AddMedicineForm>) => void;
-}) {
-  const [step, setStep] = useState<0 | 1 | 2>(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [extracted, setExtracted] = useState<Partial<AddMedicineForm> | null>(null);
 
-  if (!open) return null;
-
-  async function handleStartScan(file?: File) {
-    setIsLoading(true);
-    setStep(1);
-    try {
-      // Use the uploaded file or a placeholder
-      const input = file || "placeholder_medicine_label.jpg";
-      const text = await scanMedicineLabel(input);
-
-      // Simulating parsing of extracted text
-      // In real flow, this parsing logic would be more robust
-      setExtracted({
-          name: text.substring(0, 20),
-          dosage: "50 mg",
-      });
-      setStep(2);
-    } catch (error) {
-      console.error("OCR failed", error);
-      setStep(0);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  function handleConfirm() {
-    if (extracted) {
-      onApplyExtracted(extracted);
-    }
-    setStep(0);
-    onClose();
-  }
-
-  return (
-    <>
-      <div className="fixed inset-0 z-40 bg-overlay" aria-hidden="true" onClick={onClose} />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="scan-title"
-        className="fixed bottom-0 left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 rounded-t-2xl bg-card p-6 pb-[max(24px,env(safe-area-inset-bottom))] shadow-lg"
-      >
-        <h2 id="scan-title" className="font-display text-xl font-extrabold mb-4">
-          {step === 0 ? 'Scan medicine box or prescription' : step === 1 ? 'Scanning...' : 'Review scanned details'}
-        </h2>
-
-        {step === 0 ? (
-          <div className="space-y-4">
-            <div className="scan-stage">
-              <div className="scan-frame">
-                <Pill className="size-12" />
-              </div>
-              <h3 className="font-bold text-sm">Align medicine box in frame</h3>
-              <p className="text-xs text-muted-foreground mt-1 max-w-[260px]">
-                On-device OCR extracts dosage, medicine name, and schedule without sending images to the cloud.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              className="h-11 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer"
-              onClick={handleStartScan}
-              disabled={isLoading}
-            >
-              {isLoading ? <RefreshCw className="size-4 animate-spin" /> : <Camera className="size-4" />}
-              {isLoading ? 'Processing...' : 'Scan box'}
-            </button>
-
-            <label
-              className="h-11 w-full inline-flex items-center justify-center gap-2 rounded-lg border border-input bg-card text-foreground font-semibold hover:bg-accent transition-colors cursor-pointer text-sm"
-            >
-              <input
-                type="file"
-                className="hidden"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    handleStartScan(file);
-                  }
-                }}
-              />
-              <ScanLine className="size-4" />
-              Upload photo
-            </label>
-
-            <button
-              type="button"
-              className="w-full text-center text-sm font-semibold text-primary underline-offset-4 hover:underline py-1 cursor-pointer"
-              onClick={() => {
-                onClose();
-                onApplyExtracted({});
-              }}
-            >
-              Enter details manually instead
-            </button>
-          </div>
-        ) : step === 1 ? (
-          <div className="space-y-4 text-center py-8">
-            <RefreshCw className="size-12 mx-auto animate-spin text-primary" />
-            <p className="text-sm font-medium">Running inference...</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <span className="pill-label bg-secondary text-primary inline-flex items-center gap-1">
-              <Check className="size-3" /> Extraction ready
-            </span>
-
-            <div className="rounded-lg border border-border p-4 space-y-2 bg-muted/40">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold text-base">{extracted?.name ?? 'Unknown'}</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">{extracted?.dosage ?? 'Manual check needed'}</p>
-                </div>
-              </div>
-            </div>
-
-            <p className="prototype-note">
-              Always verify the scanned information against the physical prescription label before saving.
-            </p>
-
-            <button
-              type="button"
-              className="h-11 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer"
-              onClick={handleConfirm}
-            >
-              <Check className="size-4" />
-              Confirm & prefill form
-            </button>
-
-            <button
-              type="button"
-              className="w-full text-center text-xs text-muted-foreground hover:text-foreground py-1 cursor-pointer"
-              onClick={() => setStep(0)}
-            >
-              Back to scan stage
-            </button>
-          </div>
-        )}
-      </div>
-    </>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // DoseCard Component
@@ -980,10 +841,22 @@ export function MedicineView() {
       {/* Scan Medicine Modal */}
       <ScanMedicineModal
         open={scanOpen}
+        members={activeMembers}
         onClose={() => setScanOpen(false)}
         onApplyExtracted={(extracted) => {
           setFormInitial(extracted);
           setAddOpen(true);
+        }}
+        onSaveDirectly={async (medicineData) => {
+          const now = new Date().toISOString();
+          const newMed: Medicine = {
+            id: generateId(),
+            ...medicineData,
+            updatedAt: now,
+            updatedBy: 'me',
+            deleted: false,
+          };
+          await db.medicines.add(newMed);
         }}
       />
     </>
