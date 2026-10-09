@@ -74,6 +74,15 @@ export function getMemberByUserId(userId: string): Promise<Member | undefined> {
     .first();
 }
 
+/** Look up an active member by primary key. */
+export function getMemberById(id: string): Promise<Member | undefined> {
+  return db.members
+    .where('id')
+    .equals(id)
+    .filter((m) => !m.deleted)
+    .first();
+}
+
 /** Create or update a household. Always refreshes `updatedAt`. */
 export async function saveHousehold(household: Household): Promise<Household> {
   const existing = await db.households.get(household.id);
