@@ -1,8 +1,7 @@
 import { pipeline, env } from '@xenova/transformers';
 
-// Explicitly use CDN for remote models to bypass local path issues
+// Explicitly allow remote model loading
 env.allowLocalModels = false;
-env.remoteModels = 'https://huggingface.co';
 
 /**
  * OCR pipeline for medicine label extraction
@@ -14,6 +13,7 @@ export async function initOCRPipeline(progressCallback?: (p: any) => void) {
     ocrPipeline = await pipeline('image-to-text', 'Xenova/trocr-base-handwritten', {
       quantized: true,
       progress_callback: progressCallback,
+      cache_dir: '/models' // Explicitly set a cache directory, though browser is usually indexedDB
     });
   }
   return ocrPipeline;
