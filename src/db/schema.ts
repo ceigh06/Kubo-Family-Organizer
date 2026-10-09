@@ -1,6 +1,7 @@
-import Dexie, { Table } from 'dexie';
+import Dexie, { type Table } from 'dexie';
 
 export interface BaseRow { id: string; updatedAt: string; updatedBy: string; deleted: boolean; }
+
 export interface Household extends BaseRow { name: string; inviteCode: string; inviteExpiresAt: string; }
 export interface Member extends BaseRow { householdId: string; name: string; photo?: string; contact?: string; birthday?: string; roleLabel: string; color: string; isAdmin: boolean; userId?: string; }
 export interface Medicine extends BaseRow { memberId: string; name: string; dosage: string; type: 'maintenance' | 'PRN'; timesPerDay: number; instructions: string; stock: number; refillThreshold: number; }
@@ -23,8 +24,8 @@ export class KuboDatabase extends Dexie {
   constructor() {
     super('KuboDatabase');
     this.version(2).stores({
-      households: 'id, updatedAt',
-      members: 'id, householdId, updatedAt',
+      households: 'id, inviteCode, updatedAt',
+      members: 'id, householdId, userId, updatedAt',
       medicines: 'id, memberId, updatedAt',
       doseLogs: 'id, medicineId, scheduledAt, updatedAt',
       groceryItems: 'id, householdId, updatedAt',
