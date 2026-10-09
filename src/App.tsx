@@ -6,12 +6,13 @@ import { SignInScreen } from './features/household/components/SignInScreen';
 import { CreateOrJoinScreen } from './features/household/components/CreateOrJoinScreen';
 import { FamilyHubScreen } from './features/household/components/FamilyHubScreen';
 import { MemberProfileScreen } from './features/household/components/MemberProfileScreen';
+import { HomeScreen } from './features/home';
 import { DebtsView } from './features/debts/DebtsView';
 import { ListsView } from './features/lists';
 import { CalendarView } from './features/calendar';
 import { MedicineView } from './features/medicine';
 import { HouseholdView } from './features/household';
-import { Home, Pill, Calendar, CheckSquare, Wallet, Bell } from 'lucide-react';
+import { Home, Pill, Calendar, CheckSquare, Wallet, Bell, WifiOff, Cpu } from 'lucide-react';
 import type { Member } from './db/schema';
 
 type AuthScreen =
@@ -37,7 +38,21 @@ async function resolveInitialAuthScreen(): Promise<AuthScreen | null> {
 export default function App() {
   const [authScreen, setAuthScreen] = useState<AuthScreen | null | 'loading'>('loading');
   const [activeHouseholdId, setActiveHouseholdId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>('lists');
+  const [activeTab, setActiveTab] = useState<TabKey>('home');
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     resolveInitialAuthScreen().then((screen) => {
@@ -135,6 +150,22 @@ export default function App() {
           <span>Kubo</span>
         </div>
         <div className="header-actions">
+          {!isOnline && (
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-peach text-peach-ink"
+              title="Working offline"
+            >
+              <WifiOff className="size-3" />
+              Offline
+            </span>
+          )}
+          <span
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-secondary text-primary"
+            title="Local AI ready on device"
+          >
+            <Cpu className="size-3" />
+            Local AI
+          </span>
           <button className="header-bell p-2 text-foreground/80 hover:text-foreground cursor-pointer" aria-label="Notifications">
             <Bell className="size-5" />
           </button>
@@ -167,11 +198,15 @@ export default function App() {
             : <HouseholdView />
         )}
         {activeTab === 'home' && (
-          <div className="py-16 text-center text-muted-foreground">
-            <Home className="mx-auto mb-3 size-10 text-primary/70" />
-            <h2 className="text-lg font-bold text-foreground">Welcome to Kubo</h2>
-            <p className="text-sm mt-1">Select Meds, Calendar, Lists, or Debts below.</p>
-          </div>
+          <HomeScreen
+            onNavigate={(tab) => setActiveTab(tab)}
+            onOpenMember={(member: Member) =>
+              setAuthScreen({ name: 'member-profile', memberId: member.id })
+            }
+            onMagicAdd={() => {
+              // Stub for Magic Add to be implemented later
+            }}
+          />
         )}
       </main>
 
