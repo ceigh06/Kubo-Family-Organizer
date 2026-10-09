@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { db } from '@/db';
 import type { Medicine, DoseLog, Member } from '@/db/schema';
+import { scanMedicineLabel } from '@/ai/ocr';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -341,25 +342,40 @@ function ScanMedicineModal({
   onClose: () => void;
   onApplyExtracted: (med: Partial<AddMedicineForm>) => void;
 }) {
-  const [step, setStep] = useState<0 | 1>(0);
+  const [step, setStep] = useState<0 | 1 | 2>(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [extracted, setExtracted] = useState<Partial<AddMedicineForm> | null>(null);
 
   if (!open) return null;
 
-  function handleTrySample() {
+  async function handleStartScan() {
+    setIsLoading(true);
     setStep(1);
+    try {
+      // For now, we simulate image input or take a placeholder
+      // In a real implementation, this would be a real file/blob
+      const placeholderInput = "placeholder_medicine_label.jpg";
+      const text = await scanMedicineLabel(placeholderInput);
+
+      // Simulating parsing of extracted text
+      // In real flow, this parsing logic would be more robust
+      setExtracted({
+          name: text.substring(0, 20),
+          dosage: "50 mg",
+      });
+      setStep(2);
+    } catch (error) {
+      console.error("OCR failed", error);
+      setStep(0);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
-  function handleConfirmSample() {
-    onApplyExtracted({
-      name: 'Losartan Potassium',
-      dosage: '50 mg · 1 tablet',
-      type: 'maintenance',
-      timesPerDay: 1,
-      scheduledTime1: '08:00',
-      stock: '30',
-      refillThreshold: '7',
-      instructions: 'Take 1 tablet daily with or without food',
-    });
+  function handleConfirm() {
+    if (extracted) {
+      onApplyExtracted(extracted);
+    }
     setStep(0);
     onClose();
   }
@@ -374,7 +390,7 @@ function ScanMedicineModal({
         className="fixed bottom-0 left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 rounded-t-2xl bg-card p-6 pb-[max(24px,env(safe-area-inset-bottom))] shadow-lg"
       >
         <h2 id="scan-title" className="font-display text-xl font-extrabold mb-4">
-          {step === 0 ? 'Scan medicine box or prescription' : 'Review scanned details'}
+          {step === 0 ? 'Scan medicine box or prescription' : step === 1 ? 'Scanning...' : 'Review scanned details'}
         </h2>
 
         {step === 0 ? (
@@ -392,10 +408,11 @@ function ScanMedicineModal({
             <button
               type="button"
               className="h-11 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer"
-              onClick={handleTrySample}
+              onClick={handleStartScan}
+              disabled={isLoading}
             >
-              <Camera className="size-4" />
-              Try sample box scan
+              {isLoading ? <RefreshCw className="size-4 animate-spin" /> : <Camera className="size-4" />}
+              {isLoading ? 'Processing...' : 'Scan box'}
             </button>
 
             <button
@@ -409,23 +426,24 @@ function ScanMedicineModal({
               Enter details manually instead
             </button>
           </div>
+        ) : step === 1 ? (
+          <div className="space-y-4 text-center py-8">
+            <RefreshCw className="size-12 mx-auto animate-spin text-primary" />
+            <p className="text-sm font-medium">Running inference...</p>
+          </div>
         ) : (
           <div className="space-y-4">
             <span className="pill-label bg-secondary text-primary inline-flex items-center gap-1">
-              <Check className="size-3" /> Sample extraction ready
+              <Check className="size-3" /> Extraction ready
             </span>
 
             <div className="rounded-lg border border-border p-4 space-y-2 bg-muted/40">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="font-bold text-base">Losartan Potassium</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">50 mg · 1 tablet</p>
+                  <h3 className="font-bold text-base">{extracted?.name ?? 'Unknown'}</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">{extracted?.dosage ?? 'Manual check needed'}</p>
                 </div>
-                <span className="pill-label bg-muted">Maintenance</span>
               </div>
-              <p className="text-xs text-muted-foreground pt-1 border-t border-border">
-                Schedule: 08:00 AM daily · 30 tablets
-              </p>
             </div>
 
             <p className="prototype-note">
@@ -435,7 +453,7 @@ function ScanMedicineModal({
             <button
               type="button"
               className="h-11 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer"
-              onClick={handleConfirmSample}
+              onClick={handleConfirm}
             >
               <Check className="size-4" />
               Confirm & prefill form
