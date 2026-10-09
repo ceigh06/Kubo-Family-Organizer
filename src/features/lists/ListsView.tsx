@@ -13,6 +13,8 @@ import {
   ChevronRight,
   Clock,
   Sparkles,
+  Activity,
+  Lightbulb,
   ImagePlus,
   X,
 } from 'lucide-react';
@@ -85,6 +87,231 @@ const GROCERY_CATEGORIES = [
   'Snacks & drinks',
   'Other',
 ];
+
+type GrocerySummaryPeriod = 'day' | 'week';
+
+function getGrocerySummaryRange(period: GrocerySummaryPeriod, now: Date): { start: Date; end: Date } {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (period === 'week') {
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  }
+  const end = new Date(start);
+  end.setDate(end.getDate() + (period === 'day' ? 1 : 7));
+  return { start, end };
+}
+
+function GroceryActivitySection({
+  title,
+  items,
+  period,
+  emptyMessage,
+  deleted = false,
+  checked = false,
+}: {
+  title: string;
+  items: GroceryItem[];
+  period: GrocerySummaryPeriod;
+  emptyMessage: string;
+  deleted?: boolean;
+  checked?: boolean;
+}) {
+  return (
+    <section className="mt-5">
+      <h3 className="mb-1 text-sm font-bold">{title} <span className="font-medium text-muted-foreground">({items.length})</span></h3>
+      {items.length === 0 ? (
+        <p className="py-2 text-xs text-muted-foreground">{emptyMessage}</p>
+      ) : (
+        <div className="divide-y divide-border">
+          {items.map((item) => (
+            <div className="flex items-center justify-between gap-3 py-3" key={item.id}>
+              <div className="min-w-0">
+                <p className={`truncate text-sm font-semibold ${deleted ? 'text-muted-foreground line-through' : ''}`}>
+                  {item.name}
+                </p>
+                <p className="text-xs text-muted-foreground">{item.category || 'Pantry'}</p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-xs font-semibold">{deleted ? 'Deleted' : checked ? 'Checked out' : 'On list'}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {period === 'week' && `${new Date(item.updatedAt).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })} · `}
+                  {new Date(item.updatedAt).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function GrocerySummaryDialog({
+  open,
+  groceries,
+  onClose,
+}: {
+  open: boolean;
+  groceries: GroceryItem[];
+  onClose: () => void;
+}) {
+  const [period, setPeriod] = useState<GrocerySummaryPeriod>('week');
+
+  if (!open) return null;
+
+  const now = new Date();
+  const { start, end } = getGrocerySummaryRange(period, now);
+  const recentGroceries = groceries
+    .filter((item) => {
+      const updatedAt = Date.parse(item.updatedAt);
+      return Number.isFinite(updatedAt) && updatedAt >= start.getTime() && updatedAt < end.getTime();
+    })
+    .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+  const checkedCount = recentGroceries.filter((item) => !item.deleted && item.checked).length;
+  const removedCount = recentGroceries.filter((item) => item.deleted).length;
+  const outstandingCount = recentGroceries.filter((item) => !item.deleted && !item.checked).length;
+  const checkedGroceries = recentGroceries.filter((item) => !item.deleted && item.checked);
+  const outstandingGroceries = recentGroceries.filter((item) => !item.deleted && !item.checked);
+  const deletedGroceries = recentGroceries.filter((item) => item.deleted);
+  const activeUpdatedCount = checkedCount + outstandingCount;
+  const completionRate = activeUpdatedCount === 0 ? 0 : Math.round((checkedCount / activeUpdatedCount) * 100);
+  const categoryPurchases = new Map<string, number>();
+  recentGroceries
+    .filter((item) => !item.deleted && item.checked)
+    .forEach((item) => {
+      const category = item.category || 'Pantry';
+      categoryPurchases.set(category, (categoryPurchases.get(category) ?? 0) + 1);
+    });
+  const mostPurchasedCategory = Array.from(categoryPurchases.entries())
+    .sort((a, b) => b[1] - a[1])[0];
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-overlay" aria-hidden="true" onClick={onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="grocery-summary-title"
+        className="fixed bottom-0 left-1/2 z-50 max-h-[85dvh] w-full max-w-[480px] -translate-x-1/2 overflow-y-auto rounded-t-2xl bg-card p-6 pb-[max(24px,env(safe-area-inset-bottom))] shadow-lg"
+      >
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <h2 id="grocery-summary-title" className="font-display text-xl font-extrabold">
+              Grocery activity
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {period === 'day' ? 'Today' : 'This week'} · {recentGroceries.length} {recentGroceries.length === 1 ? 'item' : 'items'} updated
+            </p>
+          </div>
+          <button
+            type="button"
+            className="rounded-lg border border-input px-3 py-2 text-sm font-semibold hover:bg-muted"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="segmented mb-5">
+          <button
+            type="button"
+            aria-pressed={period === 'day'}
+            className={period === 'day'
+              ? 'py-2 px-3 text-sm font-semibold rounded-md bg-card text-foreground shadow-xs cursor-pointer'
+              : 'py-2 px-3 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer'}
+            onClick={() => setPeriod('day')}
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            aria-pressed={period === 'week'}
+            className={period === 'week'
+              ? 'py-2 px-3 text-sm font-semibold rounded-md bg-card text-foreground shadow-xs cursor-pointer'
+              : 'py-2 px-3 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer'}
+            onClick={() => setPeriod('week')}
+          >
+            This week
+          </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-xl bg-secondary p-3 text-center">
+            <p className="text-xl font-extrabold text-primary">{checkedCount}</p>
+            <p className="text-xs text-muted-foreground">Checked off</p>
+          </div>
+          <div className="rounded-xl bg-muted p-3 text-center">
+            <p className="text-xl font-extrabold">{outstandingCount}</p>
+            <p className="text-xs text-muted-foreground">Still on list</p>
+          </div>
+          <div className="rounded-xl bg-peach p-3 text-center">
+            <p className="text-xl font-extrabold text-peach-ink">{removedCount}</p>
+            <p className="text-xs text-muted-foreground">Deleted</p>
+          </div>
+        </div>
+
+        <section className="mt-5 rounded-xl border border-primary/15 bg-secondary/60 p-4">
+          <h3 className="flex items-center gap-2 text-sm font-bold">
+            <Lightbulb className="size-4 text-primary" />
+            {period === 'day' ? "Today's insights" : "This week's insights"}
+          </h3>
+          {recentGroceries.length === 0 ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Add or update grocery items to see activity insights here.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-2 text-sm text-foreground">
+              {activeUpdatedCount > 0 && (
+                <li>
+                  {completionRate}% of active items updated {period === 'day' ? 'today' : 'this week'} are checked off
+                  ({checkedCount} of {activeUpdatedCount}).
+                </li>
+              )}
+              {mostPurchasedCategory && (
+                <li>
+                  Most commonly purchased: {mostPurchasedCategory[0]} ({mostPurchasedCategory[1]} {mostPurchasedCategory[1] === 1 ? 'item' : 'items'} checked off).
+                </li>
+              )}
+              {outstandingCount > 0 && (
+                <li>
+                  {outstandingCount} {outstandingCount === 1 ? 'item is' : 'items are'} still on the list and may need attention.
+                </li>
+              )}
+              {removedCount > 0 && (
+                <li>
+                  {removedCount} {removedCount === 1 ? 'item was' : 'items were'} removed from the list.
+                </li>
+              )}
+            </ul>
+          )}
+        </section>
+
+        <GroceryActivitySection
+          title="Checked out"
+          items={checkedGroceries}
+          period={period}
+          checked
+          emptyMessage={`No items checked out ${period === 'day' ? 'today' : 'this week'}.`}
+        />
+        <GroceryActivitySection
+          title="Still on list"
+          items={outstandingGroceries}
+          period={period}
+          emptyMessage={`No items remain on the list from ${period === 'day' ? 'today' : 'this week'}.`}
+        />
+        <GroceryActivitySection
+          title="Deleted"
+          items={deletedGroceries}
+          period={period}
+          deleted
+          emptyMessage={`No items deleted ${period === 'day' ? 'today' : 'this week'}.`}
+        />
+        <p className="mt-4 text-xs text-muted-foreground">
+          Activity uses each item’s latest update. Earlier changes to the same item aren’t stored.
+        </p>
+      </div>
+    </>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // PageHeading
@@ -417,6 +644,7 @@ export function ListsView({
   const [tab, setTab] = useState<'Groceries' | 'Bills'>('Groceries');
   const [addGroceryOpen, setAddGroceryOpen] = useState(false);
   const [addBillOpen, setAddBillOpen] = useState(false);
+  const [grocerySummaryOpen, setGrocerySummaryOpen] = useState(false);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   // Live queries directly from Dexie IndexedDB
@@ -427,7 +655,7 @@ export function ListsView({
   const activeMembers = members.filter((m) => !m.deleted);
   const memberMap = new Map(activeMembers.map((m) => [m.id, m]));
 
-  const activeGroceries = groceries.filter((g) => !g.deleted);
+  const activeGroceries = groceries.filter((g) => !g.deleted && !g.cleared);
   const activeBills = bills.filter((b) => !b.deleted);
 
   const remainingGroceries = activeGroceries.filter((g) => !g.checked).length;
@@ -458,7 +686,7 @@ export function ListsView({
     await Promise.all(
       checkedItems.map((item) =>
         db.groceryItems.update(item.id, {
-          deleted: true,
+          cleared: true,
           updatedAt: now,
         })
       )
@@ -588,7 +816,14 @@ export function ListsView({
                 ? 'All caught up'
                 : `${remainingGroceries} ${remainingGroceries === 1 ? 'item' : 'items'} to pick up`}
             </span>
-            <span className="text-xs text-muted-foreground">Shared with family</span>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold text-primary hover:bg-secondary"
+              onClick={() => setGrocerySummaryOpen(true)}
+            >
+              <Activity className="size-3.5" />
+              Activity summary
+            </button>
           </div>
 
           {/* Grocery items grouped by category */}
@@ -628,8 +863,9 @@ export function ListsView({
                           {/* Checkbox */}
                           <button
                             type="button"
-                            className="shrink-0 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                            aria-label={item.checked ? `Uncheck ${item.name}` : `Check ${item.name}`}
+                            className="p-1 -ml-1 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                            aria-label={item.checked ? `Move ${item.name} back to the list` : `Check out ${item.name}`}
+                            title={item.checked ? 'Move back to list' : 'Check out'}
                             onClick={() => handleToggleGrocery(item.id, item.checked)}
                           >
                             {item.checked ? (
@@ -666,7 +902,8 @@ export function ListsView({
                           <button
                             type="button"
                             className="shrink-0 p-1 text-muted-foreground/40 hover:text-destructive transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
-                            aria-label={`Delete ${item.name}`}
+                            aria-label={`Delete ${item.name} from the grocery list`}
+                            title="Delete item"
                             onClick={() => handleDeleteGrocery(item.id)}
                           >
                             <Trash2 className="size-4" />
@@ -812,6 +1049,12 @@ export function ListsView({
         members={activeMembers}
         onClose={() => setAddGroceryOpen(false)}
         onSave={handleAddGrocery}
+      />
+
+      <GrocerySummaryDialog
+        open={grocerySummaryOpen}
+        groceries={groceries}
+        onClose={() => setGrocerySummaryOpen(false)}
       />
 
       <AddBillDialog
