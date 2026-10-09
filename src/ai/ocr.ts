@@ -8,8 +8,9 @@ let ocrPipeline: any = null;
 export async function initOCRPipeline() {
   if (!ocrPipeline) {
     // Using a lightweight TrOCR model pre-trained for document text recognition
-    // We can refine this model selection based on performance testing
-    ocrPipeline = await pipeline('image-to-text', 'Xenova/trocr-base-handwritten');
+    ocrPipeline = await pipeline('image-to-text', 'Xenova/trocr-base-handwritten', {
+      quantized: true,
+    });
   }
   return ocrPipeline;
 }
