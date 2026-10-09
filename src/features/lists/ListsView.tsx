@@ -2,22 +2,23 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   Plus,
-  Check,
   ShoppingBasket,
   Receipt,
   House,
   Circle,
   CheckCircle2,
+  Check,
   Trash2,
   ArrowLeftRight,
   ChevronRight,
   Clock,
-  Camera,
   Sparkles,
+  ImagePlus,
+  X,
 } from 'lucide-react';
 import { db } from '@/db';
 import type { GroceryItem, Bill, Member } from '@/db/schema';
-import { ScanGroceryModal } from './ScanGroceryModal';
+import { downscaleImage } from '@/ai';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -123,6 +124,7 @@ interface AddGroceryForm {
   name: string;
   category: string;
   addedBy: string;
+  photo?: string;
 }
 
 function AddGroceryDialog({
@@ -140,6 +142,7 @@ function AddGroceryDialog({
     name: '',
     category: 'Produce',
     addedBy: members[0]?.name ?? 'You',
+    photo: undefined,
   });
 
   if (!open) return null;
@@ -152,6 +155,7 @@ function AddGroceryDialog({
       name: '',
       category: 'Produce',
       addedBy: members[0]?.name ?? 'You',
+      photo: undefined,
     });
     onClose();
   };
@@ -173,6 +177,39 @@ function AddGroceryDialog({
           Add grocery item
         </h2>
         <form className="grid gap-4" onSubmit={handleSubmit}>
+          <label className="form-field">
+            Photo (Optional)
+            {form.photo ? (
+              <div className="relative w-24 h-24">
+                <img src={form.photo} alt="Item" className="w-full h-full object-cover rounded-md border border-border" />
+                <button type="button" onClick={() => setForm(f => ({ ...f, photo: undefined }))} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 cursor-pointer">
+                  <X className="size-3" />
+                </button>
+              </div>
+            ) : (
+              <label className="h-20 w-full rounded-md border border-dashed border-input bg-background flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-secondary/20 transition-colors text-muted-foreground">
+                <ImagePlus className="size-6" />
+                <span className="text-xs">Attach a photo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const { dataUrl } = await downscaleImage(file, 400);
+                      setForm(f => ({ ...f, photo: dataUrl }));
+                    } catch (err) {
+                      console.error(err);
+                    }
+                  }}
+                />
+              </label>
+            )}
+          </label>
+
           <label className="form-field">
             Item name
             <input
@@ -379,8 +416,8 @@ export function ListsView({
 }) {
   const [tab, setTab] = useState<'Groceries' | 'Bills'>('Groceries');
   const [addGroceryOpen, setAddGroceryOpen] = useState(false);
-  const [scanGroceryOpen, setScanGroceryOpen] = useState(false);
   const [addBillOpen, setAddBillOpen] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   // Live queries directly from Dexie IndexedDB
   const groceries = useLiveQuery(() => db.groceryItems.toArray(), []) ?? [];
@@ -437,6 +474,7 @@ export function ListsView({
       category: form.category,
       checked: false,
       addedBy: form.addedBy,
+      photo: form.photo,
       updatedAt: now,
       updatedBy: 'me',
       deleted: false,
@@ -541,15 +579,7 @@ export function ListsView({
 
       {tab === 'Groceries' ? (
         <>
-          {/* Scan with Computer Vision button */}
-          <button
-            type="button"
-            className="w-full h-12 mb-4 inline-flex items-center justify-center gap-2 rounded-lg bg-secondary text-primary font-semibold hover:bg-secondary/80 transition-colors cursor-pointer"
-            onClick={() => setScanGroceryOpen(true)}
-          >
-            <Camera className="size-5" />
-            Scan grocery item (Camera / Library)
-          </button>
+
 
           {/* Grocery header summary */}
           <div className="flex justify-between items-center mb-5">
@@ -569,22 +599,13 @@ export function ListsView({
               <p className="text-xs mt-1 text-muted-foreground/80">
                 Scan what you are holding or add pantry items manually.
               </p>
-              <div className="mt-4 flex justify-center gap-3">
+              <div className="mt-4 flex justify-center">
                 <button
                   type="button"
                   className="text-sm font-semibold text-primary underline-offset-4 hover:underline cursor-pointer"
                   onClick={() => setAddGroceryOpen(true)}
                 >
-                  Add manually
-                </button>
-                <span className="text-muted-foreground">·</span>
-                <button
-                  type="button"
-                  className="text-sm font-semibold text-primary underline-offset-4 hover:underline cursor-pointer inline-flex items-center gap-1"
-                  onClick={() => setScanGroceryOpen(true)}
-                >
-                  <Camera className="size-3.5" />
-                  Scan with camera
+                  Add item
                 </button>
               </div>
             </div>
@@ -603,10 +624,11 @@ export function ListsView({
                     </h2>
                     <div className="divide-y divide-border">
                       {itemsInCat.map((item) => (
-                        <div className="list-row group" key={item.id}>
+                        <div key={item.id} className="flex items-center gap-3 py-3 border-b border-border group">
+                          {/* Checkbox */}
                           <button
                             type="button"
-                            className="p-1 -ml-1 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                            className="shrink-0 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                             aria-label={item.checked ? `Uncheck ${item.name}` : `Check ${item.name}`}
                             onClick={() => handleToggleGrocery(item.id, item.checked)}
                           >
@@ -616,23 +638,34 @@ export function ListsView({
                               <Circle className="size-6 text-muted-foreground" />
                             )}
                           </button>
-                          <div className="min-w-0 pr-2">
-                            <h3
-                              className={
-                                item.checked
-                                  ? 'line-through text-muted-foreground font-normal'
-                                  : 'font-semibold'
-                              }
+                          {/* Photo thumbnail */}
+                          {item.photo && (
+                            <button
+                              type="button"
+                              onClick={() => setZoomedImage(item.photo!)}
+                              className="shrink-0 cursor-zoom-in"
+                              aria-label={`View photo of ${item.name}`}
                             >
+                              <img
+                                src={item.photo}
+                                alt={item.name}
+                                className="size-10 rounded-md object-cover border border-border hover:opacity-90 transition-opacity"
+                              />
+                            </button>
+                          )}
+                          {/* Name & meta */}
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-semibold truncate ${item.checked ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                               {item.name}
-                            </h3>
-                            <p className="text-xs text-muted-foreground">
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
                               Added by {item.addedBy || 'Family'}
                             </p>
                           </div>
+                          {/* Delete */}
                           <button
                             type="button"
-                            className="p-1 text-muted-foreground/40 hover:text-destructive transition-colors cursor-pointer"
+                            className="shrink-0 p-1 text-muted-foreground/40 hover:text-destructive transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
                             aria-label={`Delete ${item.name}`}
                             onClick={() => handleDeleteGrocery(item.id)}
                           >
@@ -646,24 +679,14 @@ export function ListsView({
               })}
 
               <div className="pt-2 flex flex-col gap-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    className="h-11 inline-flex items-center justify-center gap-1.5 rounded-lg border border-input bg-card font-medium text-sm hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
-                    onClick={() => setAddGroceryOpen(true)}
-                  >
-                    <Plus className="size-4" />
-                    Add manual
-                  </button>
-                  <button
-                    type="button"
-                    className="h-11 inline-flex items-center justify-center gap-1.5 rounded-lg bg-secondary text-primary font-medium text-sm hover:bg-secondary/80 transition-colors cursor-pointer"
-                    onClick={() => setScanGroceryOpen(true)}
-                  >
-                    <Camera className="size-4" />
-                    Scan item
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className="h-12 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-secondary text-primary font-bold text-[15px] hover:bg-secondary/80 transition-colors cursor-pointer mt-1"
+                  onClick={() => setAddGroceryOpen(true)}
+                >
+                  <Plus className="size-5" />
+                  Add item
+                </button>
 
                 {activeGroceries.some((g) => g.checked) && (
                   <button
@@ -798,13 +821,30 @@ export function ListsView({
         onSave={handleAddBill}
       />
 
-      {/* On-Device Computer Vision Scanner */}
-      <ScanGroceryModal
-        open={scanGroceryOpen}
-        members={activeMembers}
-        onClose={() => setScanGroceryOpen(false)}
-        onConfirmItem={handleAddGrocery}
-      />
+      {/* Image lightbox */}
+      {zoomedImage && (
+        <div
+          className="lightbox-backdrop fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
+          onClick={() => setZoomedImage(null)}
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors cursor-pointer"
+            onClick={() => setZoomedImage(null)}
+            aria-label="Close"
+          >
+            <X className="size-7" />
+          </button>
+          <img
+            src={zoomedImage}
+            alt="Zoomed item"
+            className="lightbox-image max-w-full max-h-full rounded-2xl shadow-2xl object-contain"
+            style={{ maxHeight: '80vh' }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </>
   );
 }
