@@ -225,7 +225,7 @@ function AddGroceryDialog({
           <label className="form-field">
             Category
             <select
-              className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
               value={form.category}
               onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
             >
@@ -240,7 +240,7 @@ function AddGroceryDialog({
           <label className="form-field">
             Added by
             <select
-              className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
               value={form.addedBy}
               onChange={(e) => setForm((f) => ({ ...f, addedBy: e.target.value }))}
             >
@@ -368,7 +368,7 @@ function AddBillDialog({
           <label className="form-field">
             Responsible person
             <select
-              className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
               value={form.responsibleMemberId}
               onChange={(e) => setForm((f) => ({ ...f, responsibleMemberId: e.target.value }))}
             >
