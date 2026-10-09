@@ -348,14 +348,13 @@ function ScanMedicineModal({
 
   if (!open) return null;
 
-  async function handleStartScan() {
+  async function handleStartScan(file?: File) {
     setIsLoading(true);
     setStep(1);
     try {
-      // For now, we simulate image input or take a placeholder
-      // In a real implementation, this would be a real file/blob
-      const placeholderInput = "placeholder_medicine_label.jpg";
-      const text = await scanMedicineLabel(placeholderInput);
+      // Use the uploaded file or a placeholder
+      const input = file || "placeholder_medicine_label.jpg";
+      const text = await scanMedicineLabel(input);
 
       // Simulating parsing of extracted text
       // In real flow, this parsing logic would be more robust
@@ -414,6 +413,24 @@ function ScanMedicineModal({
               {isLoading ? <RefreshCw className="size-4 animate-spin" /> : <Camera className="size-4" />}
               {isLoading ? 'Processing...' : 'Scan box'}
             </button>
+
+            <label
+              className="h-11 w-full inline-flex items-center justify-center gap-2 rounded-lg border border-input bg-card text-foreground font-semibold hover:bg-accent transition-colors cursor-pointer text-sm"
+            >
+              <input
+                type="file"
+                className="hidden"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    handleStartScan(file);
+                  }
+                }}
+              />
+              <ScanLine className="size-4" />
+              Upload photo
+            </label>
 
             <button
               type="button"
