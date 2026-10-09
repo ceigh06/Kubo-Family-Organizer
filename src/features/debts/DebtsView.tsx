@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus, Check, Wallet, Users } from 'lucide-react';
 import { db } from '@/db';
 import type { Debt, Member } from '@/db/schema';
+import { getCurrentMemberId } from '@/features/household/currentMember';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -47,7 +48,7 @@ function PageHeading({
       </div>
       {onAdd && (
         <button
-          className="inline-flex items-center justify-center h-11 w-11 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+          className="inline-flex items-center justify-center h-11 w-11 rounded-xl bg-[#112314] text-white hover:bg-[#1a351f] shadow-xs transition-all cursor-pointer"
           aria-label={`Add to ${title}`}
           onClick={onAdd}
         >
@@ -79,18 +80,20 @@ function MemberInitial({ member }: { member: Member }) {
 function DebtRow({
   debt,
   member,
+  isOwedToMe,
   onSettle,
 }: {
   debt: Debt;
   member: Member | undefined;
+  isOwedToMe: boolean;
   onSettle: (id: string, settled: boolean) => void;
 }) {
-  const name = member?.name ?? '—';
+  const name = member?.name ?? 'Family member';
   const label = debt.settled
     ? 'All settled'
-    : debt.fromId === 'me'
-    ? `You owe ${name}`
-    : `${name} owes you`;
+    : isOwedToMe
+    ? `${name} owes you`
+    : `You owe ${name}`;
 
   return (
     <div className="list-row">
@@ -102,15 +105,17 @@ function DebtRow({
         </span>
       )}
       <div>
-        <h3>{label}</h3>
-        <p>{debt.reason}</p>
-        <p className="font-semibold">{formatAmount(debt.amount)}</p>
+        <h3 className="font-semibold text-sm">{label}</h3>
+        <p className="text-xs text-muted-foreground">{debt.reason}</p>
+        <p className={`font-bold text-sm mt-0.5 ${debt.settled ? 'text-muted-foreground line-through' : isOwedToMe ? 'text-primary' : 'text-[#a16207]'}`}>
+          {formatAmount(debt.amount)}
+        </p>
       </div>
       <button
         className={
           debt.settled
-            ? 'inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-md text-sm font-medium bg-secondary text-primary hover:bg-secondary/80 transition-colors cursor-pointer'
-            : 'inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer'
+            ? 'inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-full text-xs font-semibold bg-[#eff8ec] text-[#3f751d] hover:bg-[#e0f2da] border border-[#7EC151]/30 shadow-xs transition-all cursor-pointer'
+            : 'inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-full text-xs font-semibold bg-[#112314] text-[#FED24F] hover:bg-[#1a351f] shadow-xs transition-all cursor-pointer active:scale-95'
         }
         onClick={() => onSettle(debt.id, !debt.settled)}
         aria-label={debt.settled ? `Unsettle debt with ${name}` : `Settle debt with ${name}`}
@@ -127,18 +132,24 @@ function DebtRow({
 function AddDebtDialog({
   open,
   members,
+  currentMemberId,
   onClose,
   onSave,
 }: {
   open: boolean;
   members: Member[];
+  currentMemberId?: string;
   onClose: () => void;
   onSave: (form: AddDebtForm) => void;
 }) {
+  const selectableMembers = members.filter(
+    (m) => !m.deleted && m.id !== currentMemberId && m.id !== 'me'
+  );
+
   const [form, setForm] = useState<AddDebtForm>({
     reason: '',
     amount: '',
-    memberId: members[0]?.id ?? '',
+    memberId: selectableMembers[0]?.id ?? members[0]?.id ?? '',
     direction: 'owe',
   });
 
@@ -146,10 +157,10 @@ function AddDebtDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalMemberId = form.memberId || members[0]?.id;
+    const finalMemberId = form.memberId || selectableMembers[0]?.id || members[0]?.id;
     if (!form.reason.trim() || !form.amount || !finalMemberId) return;
     onSave({ ...form, memberId: finalMemberId });
-    setForm({ reason: '', amount: '', memberId: members[0]?.id ?? '', direction: 'owe' });
+    setForm({ reason: '', amount: '', memberId: selectableMembers[0]?.id ?? members[0]?.id ?? '', direction: 'owe' });
     onClose();
   };
 
@@ -157,7 +168,7 @@ function AddDebtDialog({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-overlay"
+        className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs"
         aria-hidden="true"
         onClick={onClose}
       />
@@ -166,7 +177,7 @@ function AddDebtDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-debt-title"
-        className="fixed bottom-0 left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 rounded-t-2xl bg-card p-6 pb-[max(24px,env(safe-area-inset-bottom))] shadow-lg"
+        className="fixed bottom-0 left-1/2 z-[70] w-full max-w-[480px] -translate-x-1/2 rounded-t-2xl bg-card p-6 pb-10 shadow-2xl max-h-[88dvh] overflow-y-auto"
       >
         <h2
           id="add-debt-title"
@@ -181,7 +192,7 @@ function AddDebtDialog({
             <input
               required
               className="h-11 w-full rounded-md border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
-              placeholder="e.g. Pizza night"
+              placeholder="e.g. Pizza night, Grocery share"
               value={form.reason}
               onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
             />
@@ -219,17 +230,17 @@ function AddDebtDialog({
           {/* Family member */}
           <label className="form-field">
             Family member
-            {members.length === 0 ? (
+            {selectableMembers.length === 0 && members.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No members found. Add members first.
+                No other members found. Add household members first.
               </p>
             ) : (
               <select
                 className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base focus:outline-none focus:ring-1 focus:ring-ring"
-                value={form.memberId}
+                value={form.memberId || (selectableMembers[0]?.id ?? members[0]?.id ?? '')}
                 onChange={(e) => setForm((f) => ({ ...f, memberId: e.target.value }))}
               >
-                {members.map((m) => (
+                {(selectableMembers.length > 0 ? selectableMembers : members).map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name} · {m.roleLabel}
                   </option>
@@ -245,7 +256,7 @@ function AddDebtDialog({
           <button
             type="submit"
             disabled={members.length === 0}
-            className="h-11 w-full rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-11 w-full rounded-full bg-[#112314] text-white font-semibold hover:bg-[#1a351f] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 shadow-sm mt-2"
           >
             Add to family
           </button>
@@ -264,6 +275,11 @@ export function DebtsView() {
   const debts = useLiveQuery(() => db.debts.toArray(), []) ?? [];
   const members = useLiveQuery(() => db.members.toArray(), []) ?? [];
 
+  const currentMemberId = getCurrentMemberId();
+  const currentMember = members.find((m) => m.id === currentMemberId) ?? members[0];
+  const myId = currentMember?.id ?? currentMemberId ?? 'me';
+  const isMe = (id: string) => id === 'me' || id === myId || (currentMember && id === currentMember.id);
+
   // Map memberId → member for quick lookups
   const memberMap = new Map(members.map((m) => [m.id, m]));
 
@@ -271,8 +287,8 @@ export function DebtsView() {
   const netBalance = debts
     .filter((d) => !d.deleted && !d.settled)
     .reduce((sum, d) => {
-      if (d.toId === 'me') return sum + d.amount;   // they owe you
-      if (d.fromId === 'me') return sum - d.amount; // you owe them
+      if (isMe(d.toId)) return sum + Number(d.amount);   // they owe you
+      if (isMe(d.fromId)) return sum - Number(d.amount); // you owe them
       return sum;
     }, 0);
 
@@ -287,16 +303,17 @@ export function DebtsView() {
 
   async function handleAdd(form: AddDebtForm) {
     const now = new Date().toISOString();
+    const effectiveMyId = currentMember?.id ?? currentMemberId ?? 'me';
     const debt: Debt = {
       id: generateId(),
-      householdId: 'local', // placeholder until household sync is implemented
-      fromId: form.direction === 'owe' ? 'me' : form.memberId,
-      toId: form.direction === 'owe' ? form.memberId : 'me',
+      householdId: currentMember?.householdId ?? 'local',
+      fromId: form.direction === 'owe' ? effectiveMyId : form.memberId,
+      toId: form.direction === 'owe' ? form.memberId : effectiveMyId,
       amount: Number(form.amount),
       reason: form.reason.trim(),
       settled: false,
       updatedAt: now,
-      updatedBy: 'me',
+      updatedBy: effectiveMyId,
       deleted: false,
     };
     await db.debts.add(debt);
@@ -312,7 +329,7 @@ export function DebtsView() {
 
       {/* Balance summary band */}
       <div className="balance-band">
-        <span className="text-sm">Your balance</span>
+        <span className="text-sm font-semibold text-[#2e5c34]">Your balance</span>
         <strong>
           {netBalance === 0
             ? '₱0'
@@ -320,7 +337,7 @@ export function DebtsView() {
             ? `+${formatAmount(netBalance)}`
             : `−${formatAmount(Math.abs(netBalance))}`}
         </strong>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-[#3d6442]">
           {activeDebts.every((d) => d.settled)
             ? 'All caught up.'
             : 'Between you and your family'}
@@ -348,7 +365,8 @@ export function DebtsView() {
           <DebtRow
             key={d.id}
             debt={d}
-            member={memberMap.get(d.fromId === 'me' ? d.toId : d.fromId)}
+            member={memberMap.get(isMe(d.fromId) ? d.toId : d.fromId)}
+            isOwedToMe={isMe(d.toId)}
             onSettle={handleSettle}
           />
         ))
@@ -361,6 +379,7 @@ export function DebtsView() {
       <AddDebtDialog
         open={addOpen}
         members={members.filter((m) => !m.deleted)}
+        currentMemberId={myId}
         onClose={() => setAddOpen(false)}
         onSave={handleAdd}
       />

@@ -594,14 +594,14 @@ export function ScanMedicineModal({
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 z-40 bg-overlay" aria-hidden="true" onClick={onClose} />
+      <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs" aria-hidden="true" onClick={onClose} />
 
       {/* Main Bottom Sheet */}
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="scan-medicine-title"
-        className="fixed bottom-0 left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 rounded-t-2xl bg-card p-6 pb-[max(24px,env(safe-area-inset-bottom))] shadow-xl max-h-[92dvh] overflow-y-auto"
+        className="fixed bottom-0 left-1/2 z-[70] w-full max-w-[480px] -translate-x-1/2 rounded-t-2xl bg-card p-6 pb-10 shadow-2xl max-h-[88dvh] overflow-y-auto"
       >
         {/* Header */}
         <div className="flex justify-between items-center mb-4">

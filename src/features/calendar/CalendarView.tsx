@@ -141,7 +141,7 @@ function PageHeading({
       </div>
       {onAdd && (
         <button
-          className="inline-flex items-center justify-center h-11 w-11 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+          className="inline-flex items-center justify-center h-11 w-11 rounded-full bg-[#112314] text-white hover:bg-[#1a351f] shadow-xs transition-all cursor-pointer active:scale-95"
           aria-label={`Add to ${title}`}
           onClick={onAdd}
         >
@@ -229,7 +229,7 @@ function AddCalendarItemDialog({
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-overlay"
+        className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs"
         aria-hidden="true"
         onClick={onClose}
       />
@@ -237,7 +237,7 @@ function AddCalendarItemDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-calendar-title"
-        className="fixed bottom-0 left-1/2 z-50 max-h-[90dvh] w-full max-w-[480px] -translate-x-1/2 overflow-y-auto rounded-t-2xl bg-card p-6 pb-[max(24px,env(safe-area-inset-bottom))] shadow-lg"
+        className="fixed bottom-0 left-1/2 z-[70] max-h-[88dvh] w-full max-w-[480px] -translate-x-1/2 overflow-y-auto rounded-t-2xl bg-card p-6 pb-10 shadow-2xl"
       >
         <h2 id="add-calendar-title" className="font-display text-xl font-extrabold mb-4">
           {itemId ? 'Edit calendar item' : 'Add to family calendar'}
@@ -402,19 +402,19 @@ function AddCalendarItemDialog({
             </select>
           </label>
 
-          <div className="mt-2 flex gap-3">
+          <div className="mt-4 flex gap-3">
             <button
               type="button"
               disabled={saving}
               onClick={onClose}
-              className="h-11 flex-1 rounded-lg border border-input bg-background font-semibold hover:bg-muted transition-colors cursor-pointer disabled:opacity-60"
+              className="h-11 flex-1 rounded-full border border-input bg-background font-semibold hover:bg-muted transition-colors cursor-pointer disabled:opacity-60"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="h-11 flex-1 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-60"
+              className="h-11 flex-1 rounded-full bg-[#112314] text-white font-semibold hover:bg-[#1a351f] transition-colors cursor-pointer disabled:opacity-60 shadow-sm active:scale-95"
             >
               {saving ? 'Saving…' : itemId ? 'Save changes' : form.kind === 'event' ? 'Save event' : 'Save reminder'}
             </button>
@@ -897,44 +897,32 @@ export function CalendarView({ householdId }: { householdId?: string | null }) {
       <div className="segmented">
         <button
           type="button"
-          className={
-            mode === 'Month'
-              ? 'py-2 px-3 text-sm font-semibold rounded-md bg-card text-foreground shadow-xs cursor-pointer'
-              : 'py-2 px-3 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer'
-          }
+          data-active={mode === 'Month'}
           onClick={() => setMode('Month')}
         >
           Month
         </button>
         <button
           type="button"
-          className={
-            mode === 'Week'
-              ? 'py-2 px-3 text-sm font-semibold rounded-md bg-card text-foreground shadow-xs cursor-pointer'
-              : 'py-2 px-3 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer'
-          }
+          data-active={mode === 'Week'}
           onClick={() => setMode('Week')}
         >
           Week
         </button>
         <button
           type="button"
-          className={
-            mode === 'Agenda'
-              ? 'py-2 px-3 text-sm font-semibold rounded-md bg-card text-foreground shadow-xs cursor-pointer'
-              : 'py-2 px-3 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer'
-          }
+          data-active={mode === 'Agenda'}
           onClick={() => setMode('Agenda')}
         >
           Agenda
         </button>
       </div>
 
-      <div className="mb-4 grid grid-cols-[1fr_1fr_auto] gap-2">
+      <div className="mb-3 grid grid-cols-[1fr_1fr_auto] gap-2">
         <label className="sr-only" htmlFor="calendar-member-filter">Filter by family member</label>
         <select
           id="calendar-member-filter"
-          className="h-10 min-w-0 rounded-lg border border-input bg-background px-2 text-sm"
+          className="h-10 min-w-0 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-foreground shadow-xs hover:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
           value={memberFilter}
           onChange={(event) => setMemberFilter(event.target.value)}
         >
@@ -944,7 +932,7 @@ export function CalendarView({ householdId }: { householdId?: string | null }) {
         <label className="sr-only" htmlFor="calendar-type-filter">Filter by calendar item type</label>
         <select
           id="calendar-type-filter"
-          className="h-10 min-w-0 rounded-lg border border-input bg-background px-2 text-sm"
+          className="h-10 min-w-0 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-foreground shadow-xs hover:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
           value={typeFilter}
           onChange={(event) => {
             const value = event.target.value;
@@ -960,12 +948,16 @@ export function CalendarView({ householdId }: { householdId?: string | null }) {
         </select>
         <button
           type="button"
-          className="inline-flex items-center justify-center gap-1 rounded-md border border-input px-2 text-xs font-semibold hover:bg-muted disabled:opacity-50"
+          className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-semibold shadow-xs transition-colors cursor-pointer ${
+            notificationsEnabled
+              ? 'border-primary/40 bg-secondary text-primary'
+              : 'border-border bg-card text-foreground hover:bg-muted'
+          } disabled:opacity-50`}
           disabled={typeof Notification === 'undefined' || notificationsEnabled}
           onClick={() => void enableNotifications()}
           title={notificationsEnabled ? 'Reminder notifications are enabled' : 'Enable browser reminder notifications'}
         >
-          {notificationsEnabled ? <BellRing className="size-4" /> : <Bell className="size-4" />}
+          {notificationsEnabled ? <BellRing className="size-3.5" /> : <Bell className="size-3.5" />}
           <span>{notificationsEnabled ? 'On' : 'Notify'}</span>
         </button>
       </div>

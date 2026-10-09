@@ -1079,7 +1079,7 @@ export async function scanMedicineLabel(
         options?.onProgress?.({ status: passLabel, progress: stepProgress });
 
         try {
-          await worker.setParameters({ tessedit_pageseg_mode: pass.psm });
+          await worker.setParameters({ tessedit_pageseg_mode: pass.psm as any });
           const ret = await worker.recognize(pass.canvas);
           const recognized = ret?.data?.text?.trim() || '';
           if (recognized.length > 3) {
@@ -1104,7 +1104,7 @@ export async function scanMedicineLabel(
 
         for (const pass of fbPasses.slice(0, 3)) {
           try {
-            await worker.setParameters({ tessedit_pageseg_mode: pass.psm });
+            await worker.setParameters({ tessedit_pageseg_mode: pass.psm as any });
             const ret = await worker.recognize(pass.canvas);
             const recognized = ret?.data?.text?.trim() || '';
             if (recognized.length > 3) {

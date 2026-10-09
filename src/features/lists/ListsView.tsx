@@ -186,12 +186,12 @@ function GrocerySummaryDialog({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-overlay" aria-hidden="true" onClick={onClose} />
+      <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs" aria-hidden="true" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="grocery-summary-title"
-        className="fixed bottom-0 left-1/2 z-50 max-h-[85dvh] w-full max-w-[480px] -translate-x-1/2 overflow-y-auto rounded-t-2xl bg-card p-6 pb-[max(24px,env(safe-area-inset-bottom))] shadow-lg"
+        className="fixed bottom-0 left-1/2 z-[70] max-h-[88dvh] w-full max-w-[480px] -translate-x-1/2 overflow-y-auto rounded-t-2xl bg-card p-6 pb-10 shadow-2xl"
       >
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
@@ -333,7 +333,7 @@ function PageHeading({
       </div>
       {onAdd && (
         <button
-          className="inline-flex items-center justify-center h-11 w-11 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+          className="inline-flex items-center justify-center h-11 w-11 rounded-full bg-[#112314] text-white hover:bg-[#1a351f] shadow-xs transition-all cursor-pointer active:scale-95"
           aria-label={`Add to ${title}`}
           onClick={onAdd}
         >
@@ -390,7 +390,7 @@ function AddGroceryDialog({
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-overlay"
+        className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs"
         aria-hidden="true"
         onClick={onClose}
       />
@@ -398,7 +398,7 @@ function AddGroceryDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-grocery-title"
-        className="fixed bottom-0 left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 rounded-t-2xl bg-card p-6 pb-[max(24px,env(safe-area-inset-bottom))] shadow-lg"
+        className="fixed bottom-0 left-1/2 z-[70] w-full max-w-[480px] -translate-x-1/2 rounded-t-2xl bg-card p-6 pb-10 shadow-2xl max-h-[88dvh] overflow-y-auto"
       >
         <h2 id="add-grocery-title" className="font-display text-xl font-extrabold mb-5">
           Add grocery item
@@ -482,7 +482,7 @@ function AddGroceryDialog({
 
           <button
             type="submit"
-            className="h-11 w-full rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer mt-2"
+            className="h-11 w-full rounded-full bg-[#112314] text-white font-semibold hover:bg-[#1a351f] transition-colors cursor-pointer mt-2 active:scale-95"
           >
             Add to list
           </button>
@@ -542,7 +542,7 @@ function AddBillDialog({
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-overlay"
+        className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs"
         aria-hidden="true"
         onClick={onClose}
       />
@@ -550,7 +550,7 @@ function AddBillDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-bill-title"
-        className="fixed bottom-0 left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 rounded-t-2xl bg-card p-6 pb-[max(24px,env(safe-area-inset-bottom))] shadow-lg"
+        className="fixed bottom-0 left-1/2 z-[70] w-full max-w-[480px] -translate-x-1/2 rounded-t-2xl bg-card p-6 pb-10 shadow-2xl max-h-[88dvh] overflow-y-auto"
       >
         <h2 id="add-bill-title" className="font-display text-xl font-extrabold mb-5">
           Add a household bill
@@ -623,7 +623,7 @@ function AddBillDialog({
 
           <button
             type="submit"
-            className="h-11 w-full rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer mt-2"
+            className="h-11 w-full rounded-full bg-[#112314] text-white font-semibold hover:bg-[#1a351f] transition-colors cursor-pointer mt-2 active:scale-95"
           >
             Add bill
           </button>
@@ -796,22 +796,14 @@ export function ListsView({
       <div className="segmented">
         <button
           type="button"
-          className={
-            tab === 'Groceries'
-              ? 'py-2 px-3 text-sm font-semibold rounded-md bg-card text-foreground shadow-xs cursor-pointer'
-              : 'py-2 px-3 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer'
-          }
+          data-active={tab === 'Groceries'}
           onClick={() => setTab('Groceries')}
         >
           Groceries
         </button>
         <button
           type="button"
-          className={
-            tab === 'Bills'
-              ? 'py-2 px-3 text-sm font-semibold rounded-md bg-card text-foreground shadow-xs cursor-pointer'
-              : 'py-2 px-3 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground cursor-pointer'
-          }
+          data-active={tab === 'Bills'}
           onClick={() => setTab('Bills')}
         >
           Bills
@@ -932,21 +924,21 @@ export function ListsView({
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    className="h-12 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-secondary text-primary font-bold text-[15px] hover:bg-secondary/80 transition-colors cursor-pointer mt-1"
+                    className="h-11 w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#112314] text-white font-bold text-sm hover:bg-[#1a351f] shadow-xs transition-all cursor-pointer mt-1 active:scale-95"
                     onClick={() => setAddGroceryOpen(true)}
                   >
-                    <Plus className="size-5" />
+                    <Plus className="size-4" />
                     Add item
                   </button>
 
                   <button
                     type="button"
-                    className="h-12 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground font-bold text-[15px] hover:bg-primary/90 transition-colors cursor-pointer mt-1 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="h-11 w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#eff8ec] text-[#3f751d] font-bold text-sm hover:bg-[#e0f2da] border border-[#7EC151]/30 shadow-xs transition-all cursor-pointer mt-1 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
                     onClick={handleCheckOutAllGroceries}
                     disabled={remainingGroceries === 0}
                   >
-                    <Check className="size-5" />
-                    Check out all items
+                    <Check className="size-4" />
+                    Check out all
                   </button>
                 </div>
 
@@ -967,11 +959,11 @@ export function ListsView({
         <>
           {/* Bills balance band */}
           <div className="balance-band">
-            <span className="text-sm">Household bills</span>
+            <span className="text-sm font-semibold text-[#2e5c34]">Household bills</span>
             <strong>
               {totalUnpaidBills === 0 ? '₱0' : formatAmount(totalUnpaidBills)}
             </strong>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-[#3d6442]">
               {unpaidBills.length === 0
                 ? 'All caught up.'
                 : `${unpaidBills.length} ${unpaidBills.length === 1 ? 'bill' : 'bills'} to take care of`}
@@ -1022,8 +1014,8 @@ export function ListsView({
                       type="button"
                       className={
                         isPaid
-                          ? 'inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium bg-secondary text-primary hover:bg-secondary/80 transition-colors cursor-pointer'
-                          : 'inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer'
+                          ? 'inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-full text-xs font-semibold bg-[#eff8ec] text-[#3f751d] hover:bg-[#e0f2da] border border-[#7EC151]/30 transition-colors cursor-pointer'
+                          : 'inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-full text-xs font-semibold bg-[#112314] text-[#FED24F] hover:bg-[#1a351f] shadow-xs transition-colors cursor-pointer active:scale-95'
                       }
                       onClick={() => handleToggleBillPaid(bill)}
                       aria-label={isPaid ? `Mark ${bill.name} unpaid` : `Mark ${bill.name} paid`}
@@ -1043,7 +1035,7 @@ export function ListsView({
               <div className="pt-4">
                 <button
                   type="button"
-                  className="w-full h-11 inline-flex items-center justify-center gap-2 rounded-lg border border-input bg-card font-medium text-sm hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                  className="w-full h-11 inline-flex items-center justify-center gap-2 rounded-full bg-[#112314] text-white font-semibold text-sm hover:bg-[#1a351f] shadow-xs transition-all cursor-pointer active:scale-95"
                   onClick={() => setAddBillOpen(true)}
                 >
                   <Plus className="size-4" />
