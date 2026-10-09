@@ -229,7 +229,7 @@ function AddCalendarItemDialog({
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-overlay"
+        className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs"
         aria-hidden="true"
         onClick={onClose}
       />
@@ -237,7 +237,7 @@ function AddCalendarItemDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-calendar-title"
-        className="fixed bottom-0 left-1/2 z-50 max-h-[90dvh] w-full max-w-[480px] -translate-x-1/2 overflow-y-auto rounded-t-2xl bg-card p-6 pb-[max(24px,env(safe-area-inset-bottom))] shadow-lg"
+        className="fixed bottom-0 left-1/2 z-[70] max-h-[88dvh] w-full max-w-[480px] -translate-x-1/2 overflow-y-auto rounded-t-2xl bg-card p-6 pb-10 shadow-2xl"
       >
         <h2 id="add-calendar-title" className="font-display text-xl font-extrabold mb-4">
           {itemId ? 'Edit calendar item' : 'Add to family calendar'}
@@ -402,19 +402,19 @@ function AddCalendarItemDialog({
             </select>
           </label>
 
-          <div className="mt-2 flex gap-3">
+          <div className="mt-4 flex gap-3">
             <button
               type="button"
               disabled={saving}
               onClick={onClose}
-              className="h-11 flex-1 rounded-lg border border-input bg-background font-semibold hover:bg-muted transition-colors cursor-pointer disabled:opacity-60"
+              className="h-11 flex-1 rounded-full border border-input bg-background font-semibold hover:bg-muted transition-colors cursor-pointer disabled:opacity-60"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="h-11 flex-1 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-60"
+              className="h-11 flex-1 rounded-full bg-[#112314] text-white font-semibold hover:bg-[#1a351f] transition-colors cursor-pointer disabled:opacity-60 shadow-sm active:scale-95"
             >
               {saving ? 'Saving…' : itemId ? 'Save changes' : form.kind === 'event' ? 'Save event' : 'Save reminder'}
             </button>

@@ -186,12 +186,12 @@ function GrocerySummaryDialog({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-overlay" aria-hidden="true" onClick={onClose} />
+      <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs" aria-hidden="true" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="grocery-summary-title"
-        className="fixed bottom-0 left-1/2 z-50 max-h-[85dvh] w-full max-w-[480px] -translate-x-1/2 overflow-y-auto rounded-t-2xl bg-card p-6 pb-[max(24px,env(safe-area-inset-bottom))] shadow-lg"
+        className="fixed bottom-0 left-1/2 z-[70] max-h-[88dvh] w-full max-w-[480px] -translate-x-1/2 overflow-y-auto rounded-t-2xl bg-card p-6 pb-10 shadow-2xl"
       >
         <div className="mb-5 flex items-start justify-between gap-3">
           <div>
@@ -390,7 +390,7 @@ function AddGroceryDialog({
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-overlay"
+        className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs"
         aria-hidden="true"
         onClick={onClose}
       />
@@ -398,7 +398,7 @@ function AddGroceryDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-grocery-title"
-        className="fixed bottom-0 left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 rounded-t-2xl bg-card p-6 pb-[max(24px,env(safe-area-inset-bottom))] shadow-lg"
+        className="fixed bottom-0 left-1/2 z-[70] w-full max-w-[480px] -translate-x-1/2 rounded-t-2xl bg-card p-6 pb-10 shadow-2xl max-h-[88dvh] overflow-y-auto"
       >
         <h2 id="add-grocery-title" className="font-display text-xl font-extrabold mb-5">
           Add grocery item
@@ -542,7 +542,7 @@ function AddBillDialog({
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-overlay"
+        className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs"
         aria-hidden="true"
         onClick={onClose}
       />
@@ -550,7 +550,7 @@ function AddBillDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-bill-title"
-        className="fixed bottom-0 left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 rounded-t-2xl bg-card p-6 pb-[max(24px,env(safe-area-inset-bottom))] shadow-lg"
+        className="fixed bottom-0 left-1/2 z-[70] w-full max-w-[480px] -translate-x-1/2 rounded-t-2xl bg-card p-6 pb-10 shadow-2xl max-h-[88dvh] overflow-y-auto"
       >
         <h2 id="add-bill-title" className="font-display text-xl font-extrabold mb-5">
           Add a household bill
