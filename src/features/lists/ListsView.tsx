@@ -7,6 +7,7 @@ import {
   House,
   Circle,
   CheckCircle2,
+  Check,
   Trash2,
   ArrowLeftRight,
   ChevronRight,

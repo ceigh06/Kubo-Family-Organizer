@@ -146,8 +146,9 @@ function AddDebtDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.reason.trim() || !form.amount || !form.memberId) return;
-    onSave(form);
+    const finalMemberId = form.memberId || members[0]?.id;
+    if (!form.reason.trim() || !form.amount || !finalMemberId) return;
+    onSave({ ...form, memberId: finalMemberId });
     setForm({ reason: '', amount: '', memberId: members[0]?.id ?? '', direction: 'owe' });
     onClose();
   };
