@@ -9,8 +9,9 @@ export interface DoseLog extends BaseRow { medicineId: string; scheduledAt: stri
 export interface GroceryItem extends BaseRow { householdId: string; name: string; category: string; checked: boolean; addedBy: string; }
 export interface Bill extends BaseRow { householdId: string; name: string; amount: number; dueDate: string; status: 'paid' | 'unpaid'; responsibleMemberId: string; recurring: boolean; }
 export interface Debt extends BaseRow { householdId: string; fromId: string; toId: string; amount: number; reason: string; settled: boolean; }
-export interface CalendarEvent extends BaseRow { householdId: string; title: string; date: string; time?: string; location?: string; description?: string; createdBy: string; memberId?: string; color?: string; }
-export interface Reminder extends BaseRow { householdId: string; title: string; dueDate: string; dueTime?: string; done: boolean; createdBy: string; assigneeId?: string; }
+export type CalendarRecurrence = 'daily' | 'weekly' | 'monthly';
+export interface CalendarEvent extends BaseRow { householdId: string; title: string; date: string; time?: string; location?: string; description?: string; createdBy: string; memberId?: string; color?: string; recurrence?: CalendarRecurrence; recurrenceUntil?: string; }
+export interface Reminder extends BaseRow { householdId: string; title: string; dueDate: string; dueTime?: string; done: boolean; createdBy: string; assigneeId?: string; recurrence?: CalendarRecurrence; recurrenceUntil?: string; completedDates?: string[]; }
 export interface SyncQueueItem { id: string; table: string; op: 'create' | 'update' | 'delete'; createdAt: string; }
 
 export class KuboDatabase extends Dexie {
@@ -43,4 +44,3 @@ export class KuboDatabase extends Dexie {
     });
   }
 }
-
